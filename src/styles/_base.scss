@@ -1,0 +1,156 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html,
+body {
+  font-family: var(--font-sans);
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+body.cursor-hidden,
+body.cursor-hidden * {
+  cursor: none !important;
+}
+html.desktop-shell-root,
+html.desktop-shell-root body {
+  background: transparent;
+}
+html.wallpaper-mode,
+html.wallpaper-mode body,
+body.wallpaper-mode {
+  background: transparent !important;
+}
+:root {
+  --font-sans:
+    "Noto Sans SC", "PingFang SC", "HarmonyOS Sans SC", "Alibaba PuHuiTi",
+    "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Geist Mono", "SF Mono", ui-monospace, monospace;
+  --fc-bg: #08090b;
+  --fc-paper: #0e1014;
+  --fc-ink: #e8ecef;
+  --fc-ink-2: #d2d7dc;
+  --fc-muted: #8a9099;
+  --fc-hair: #1a1d22;
+  --fc-hair-2: #262a31;
+  --fc-accent: #00f5d4;
+  --fc-accent-hov: #00e0be;
+  --fc-accent-rgb: 0, 245, 212;
+  --fc-blue: #2442ff;
+  --fc-warm: #f8f4ee;
+  --chill-ink: #030608;
+  --chill-deep: #061116;
+  --chill-cyan: #8fe9ff;
+  --chill-blue: #73a7ff;
+  --chill-mint: #9cffdf;
+  --chill-soft: rgba(214, 248, 255, 0.9);
+  --champagne: #f4d28a;
+  --champagne-deep: #9a6f2c;
+  --home-accent: #00f5d4;
+  --home-accent-rgb: 0, 245, 212;
+  --visual-tint: #9db8cf;
+  --source-netease: #d95b67;
+  --source-qq: #00f5d4;
+  --source-soda: #ff7a9e;
+  --source-local: #9db8cf;
+}
+:root {
+  --glass-bg: linear-gradient(
+    112deg,
+    rgba(72, 74, 76, 0.62),
+    rgba(24, 27, 30, 0.7) 48%,
+    rgba(8, 12, 14, 0.74)
+  );
+  --glass-bg-focus: linear-gradient(
+    112deg,
+    rgba(88, 91, 92, 0.68),
+    rgba(28, 32, 35, 0.76) 50%,
+    rgba(8, 13, 15, 0.82)
+  );
+  --glass-border: rgba(0, 245, 212, 0.3);
+  --glass-border-soft: rgba(255, 255, 255, 0.095);
+  --glass-shadow:
+    0 22px 64px rgba(0, 0, 0, 0.3), 0 0 34px rgba(0, 245, 212, 0.052),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -24px 58px rgba(0, 0, 0, 0.16);
+  --glass-shadow-focus:
+    0 24px 72px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(0, 245, 212, 0.13),
+    0 0 42px rgba(0, 245, 212, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+:root {
+  --saved-panel-glass-bg: rgba(0, 0, 0, 0.1);
+  --saved-panel-glass-filter: blur(12px) saturate(1.8) brightness(1.16);
+  --saved-panel-glass-svg-filter: url(#mineradio-control-glass-filter)
+    saturate(1);
+  --saved-panel-glass-shadow:
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.35),
+    inset 0 0 10px 4px rgba(255, 255, 255, 0.15),
+    0 4px 16px rgba(17, 17, 26, 0.05), 0 8px 24px rgba(17, 17, 26, 0.05),
+    0 16px 56px rgba(17, 17, 26, 0.05), inset 0 4px 16px rgba(17, 17, 26, 0.05),
+    inset 0 8px 24px rgba(17, 17, 26, 0.05),
+    inset 0 16px 56px rgba(17, 17, 26, 0.05);
+  --saved-panel-glass-radius: 50px;
+  --saved-button-glass-bg: rgba(0, 0, 0, 0.1);
+  --saved-button-glass-filter: blur(12px) saturate(1.8) brightness(1.16);
+  --saved-button-glass-svg-filter: url(#mineradio-control-glass-filter)
+    saturate(1);
+  --saved-button-glass-shadow:
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.34),
+    inset 0 0 10px 4px rgba(255, 255, 255, 0.13),
+    0 10px 30px rgba(0, 0, 0, 0.18);
+  --saved-button-glass-hover-bg: rgba(255, 255, 255, 0.055);
+  --saved-button-glass-hover-shadow:
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.42),
+    inset 0 0 12px 5px rgba(255, 255, 255, 0.17),
+    0 12px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(255, 255, 255, 0.06);
+}
+:root {
+  --home-icon-color: #f4d28a;
+  --home-icon-rgb: 244, 210, 138;
+  --visual-icon-color: #7fd8ff;
+  --visual-icon-rgb: 127, 216, 255;
+}
+.glass-saved-panel {
+  background: var(--saved-panel-glass-bg);
+  border: 0;
+  border-radius: var(--saved-panel-glass-radius);
+  backdrop-filter: var(--saved-panel-glass-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter);
+  box-shadow: var(--saved-panel-glass-shadow);
+}
+html.control-glass-svg-ok .glass-saved-panel {
+  background: var(--saved-panel-glass-bg);
+  backdrop-filter: var(--saved-panel-glass-svg-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-svg-filter);
+}
+.glass-saved-panel::before {
+  content: none;
+}
+.glass-saved-button {
+  border: 0;
+  background: var(--saved-button-glass-bg);
+  backdrop-filter: var(--saved-button-glass-filter);
+  -webkit-backdrop-filter: var(--saved-button-glass-filter);
+  box-shadow: var(--saved-button-glass-shadow);
+}
+html.control-glass-svg-ok .glass-saved-button {
+  backdrop-filter: var(--saved-button-glass-svg-filter);
+  -webkit-backdrop-filter: var(--saved-button-glass-svg-filter);
+}
+.glass-saved-button:hover {
+  background: var(--saved-button-glass-hover-bg);
+  box-shadow: var(--saved-button-glass-hover-shadow);
+}
+body::after,
+#desktop-window-shell::after {
+  content: none;
+}

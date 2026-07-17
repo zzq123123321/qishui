@@ -1,0 +1,9 @@
+/* ---------- 加载/拖放 ---------- */
+#loading-overlay{position:fixed;inset:0;z-index:40;pointer-events:none;display:none}
+#loading-overlay.show{display:block}
+.spinner{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+#drop-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;backdrop-filter:blur(10px)}
+#drop-overlay.show{display:flex}
+#drop-overlay .drop-text{font-size:18px;font-weight:300;color:rgba(255,255,255,0.65);letter-spacing:3px;border:2px dashed rgba(255,255,255,0.2);padding:50px 70px;border-radius:20px}
+

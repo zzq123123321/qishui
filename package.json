@@ -1,0 +1,161 @@
+{
+  "name": "mineradio",
+  "productName": "Mineradio",
+  "version": "1.2.2",
+  "description": "沉浸式音乐播放器，融合天气电台、歌词舞台、粒子视觉和 3D 歌单架。",
+  "author": "Mineradio",
+  "main": "electron/main.cjs",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "dev:renderer": "vite --host 127.0.0.1",
+    "dev:electron": "node scripts/dev-electron.cjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "npm run build && electron .",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip --publish never",
+    "release:gitee": "node build/sync-gitee-release.js"
+  },
+  "mineradio": {
+    "update": {
+      "provider": "gitee",
+      "owner": "Xiaohaojei568",
+      "repo": "Mineradio",
+      "gitee": {
+        "owner": "xiao-majie",
+        "repo": "mineradio",
+        "repository": "https://gitee.com/xiao-majie/mineradio.git",
+        "prefer": true
+      },
+      "preview": true,
+      "preferMirrors": true,
+      "mirrors": [
+        "https://gh.llkk.cc/",
+        "https://ghfast.top/",
+        "https://gh-proxy.com/"
+      ]
+    }
+  },
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "gsap": "^3.15.0",
+    "mpg123-decoder": "^1.0.3",
+    "NeteaseCloudMusicApi": "^4.32.0",
+    "vue": "^3.5.39"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "rcedit": "^5.0.2",
+    "sass": "^1.101.0",
+    "vite": "^8.1.1"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "build": {
+    "appId": "com.mineradio.desktop",
+    "productName": "Mineradio",
+    "copyright": "Copyright (c) 2026",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "afterPack": "build/after-pack.js",
+    "compression": "maximum",
+    "electronLanguages": [
+      "zh-CN",
+      "zh-TW",
+      "en-US"
+    ],
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "renderer-dist/**/*",
+      "public/**/*",
+      "build/icon.ico",
+      "server.js",
+      "dj-analyzer.js",
+      "package.json",
+      "!**/node_modules/**/{test,tests,__tests__,coverage,docs,doc,example,examples,benchmark,benchmarks}/**",
+      "!**/node_modules/**/*.{map,ts,tsx,flow,md,markdown}",
+      "!**/node_modules/**/*.{d.cts,d.mts,cts,mts,c,h,cc,cpp,gyp,mk,sh,bat,cmd,tsbuildinfo}",
+      "!**/node_modules/**/*~",
+      "!**/node_modules/**/{README,README.*,CHANGELOG,CHANGELOG.*,HISTORY,HISTORY.*,LICENSE,LICENSE.*,LICENCE,LICENCE.*,NOTICE,NOTICE.*}",
+      "!**/node_modules/**/{.github,.vscode}/**",
+      "!node_modules/gsap/**/*",
+      "!node_modules/axios/dist/axios.js",
+      "!node_modules/axios/dist/axios.min.js",
+      "!node_modules/axios/dist/browser/**/*",
+      "!node_modules/axios/dist/esm/**/*",
+      "!node_modules/node-forge/dist/**/*",
+      "!node_modules/pngjs/browser.js",
+      "!node_modules/source-map/dist/**/*",
+      "!node_modules/@tootallnate/quickjs-emscripten/c/**/*",
+      "!node_modules/xml2js/lib/xml2js.bc.js",
+      "!node_modules/NeteaseCloudMusicApi/data/deviceid.txt",
+      "!node_modules/NeteaseCloudMusicApi/public/**/*"
+    ],
+    "asar": false,
+    "win": {
+      "executableName": "Mineradio",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "Mineradio-${version}-Mac-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mineradio",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp",
+      "include": "build/installer.nsh",
+      "differentialPackage": false,
+      "artifactName": "Mineradio-${version}-Setup.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Xiaohaojei568",
+        "repo": "Mineradio"
+      }
+    ]
+  }
+}

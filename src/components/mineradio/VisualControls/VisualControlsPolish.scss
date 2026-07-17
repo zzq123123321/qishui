@@ -1,0 +1,59 @@
+/* Visual console organization and adaptive popovers. */
+.fx-panel-tabs{
+  position:sticky;
+  top:-18px;
+  z-index:4;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:5px;
+  margin:-2px -2px 14px;
+  padding:5px;
+  border-radius:14px;
+  background:rgba(0,0,0,.50);
+  border:1px solid rgba(255,255,255,.075);
+  box-shadow:0 10px 34px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.07);
+  backdrop-filter:blur(18px) saturate(1.12);
+  -webkit-backdrop-filter:blur(18px) saturate(1.12);
+}
+.fx-panel-tabs button{
+  min-width:0;
+  height:30px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:rgba(255,255,255,.52);
+  font:700 11px/1 var(--font-sans);
+  letter-spacing:.02em;
+  cursor:pointer;
+  transition:background .18s,color .18s,box-shadow .18s,transform .18s;
+}
+.fx-panel-tabs button:hover{color:#fff;background:rgba(255,255,255,.055)}
+.fx-panel-tabs button.active{
+  color:#fff;
+  background:rgba(var(--fc-accent-rgb),.15);
+  box-shadow:inset 0 0 0 1px rgba(var(--fc-accent-rgb),.24),0 8px 22px rgba(var(--fc-accent-rgb),.08);
+}
+.fx-tab-page{display:none}
+.fx-tab-page.active{display:block}
+.fx-tab-page>.fx-section-label:first-child{margin-top:0}
+#fx-panel .fx-fold{margin-top:10px}
+#fx-panel .fx-fold.open{background:rgba(255,255,255,.026)}
+.lyric-color-row.bg-cover-mode #bg-color-picker{
+  border-color:rgba(255,255,255,.26)!important;
+  background:conic-gradient(from 210deg,#f8f4ee,#9db8cf,#2442ff,#f4d28a,#f8f4ee)!important;
+  box-shadow:0 0 0 1px rgba(var(--fc-accent-rgb),.12),0 10px 24px rgba(0,0,0,.22)!important;
+}
+.lyric-color-row.bg-cover-mode #bg-color-picker::-webkit-color-swatch{opacity:.18}
+.lyric-color-row.bg-cover-mode .fx-color-row-label small{color:rgba(var(--fc-accent-rgb),.78)}
+.cover-color-pop,.color-lab-pop{
+  transform:none!important;
+  max-height:calc(100vh - 28px);
+  overflow:auto;
+}
+@media (max-width:720px){
+  .fx-panel-tabs{display:flex;overflow-x:auto;scrollbar-width:none;top:-14px}
+  .fx-panel-tabs::-webkit-scrollbar{display:none}
+  .fx-panel-tabs button{flex:0 0 auto;min-width:58px;padding:0 10px}
+  .cover-color-pop,.color-lab-pop{width:calc(100vw - 28px)!important}
+}
+

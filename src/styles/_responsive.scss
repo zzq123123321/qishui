@@ -1,0 +1,30 @@
+/* ============================================================ */
+/*  响应式                                                       */
+/* ============================================================ */
+@media (max-width: 720px) {
+  #fx-panel,
+  #playlist-panel {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    top: 76px;
+    bottom: auto;
+  }
+  #top-right {
+    right: 12px;
+  }
+}
+@media (max-width: 520px) {
+  .preset-grid,
+  .fx-toggle-grid {
+    grid-template-columns: 1fr;
+  }
+  .fx-slider {
+    grid-template-columns: 74px minmax(0, 1fr) 40px 28px;
+    gap: 8px;
+    padding: 8px;
+  }
+  .lyric-color-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

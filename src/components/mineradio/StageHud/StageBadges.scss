@@ -1,0 +1,9 @@
+/* ---------- AI 深度加载角标 ---------- */
+#ai-depth-chip{position:fixed;z-index:7;top:80px;right:24px;background:rgba(10,10,16,0.85);border:1px solid rgba(244,210,138,0.32);padding:8px 14px;border-radius:14px;font-size:11px;color:var(--champagne);letter-spacing:.4px;display:none;align-items:center;gap:8px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#ai-depth-chip.show{display:flex}
+#ai-depth-chip .mini-spin{width:11px;height:11px;border:1.5px solid rgba(244,210,138,.24);border-top-color:var(--champagne);border-radius:50%;animation:spin .7s linear infinite}
+
+#beat-chip{position:fixed;z-index:7;top:122px;right:24px;background:rgba(10,10,16,0.85);border:1px solid rgba(126,226,168,0.3);padding:8px 14px;border-radius:14px;font-size:11px;color:#7ee2a8;letter-spacing:.4px;display:none;align-items:center;gap:8px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#beat-chip.show{display:flex}
+#beat-chip .mini-spin{width:11px;height:11px;border:1.5px solid rgba(126,226,168,.25);border-top-color:#7ee2a8;border-radius:50%;animation:spin .7s linear infinite}
+

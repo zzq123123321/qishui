@@ -1,0 +1,161 @@
+:root {
+  --mr-scrollbar-size: 8px;
+  --mr-scrollbar-thumb: rgba(238, 242, 248, 0.26);
+  --mr-scrollbar-thumb-hover: rgba(var(--fc-accent-rgb, 244, 210, 138), 0.58);
+  --mr-scrollbar-track: rgba(255, 255, 255, 0.035);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mr-scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: var(--mr-scrollbar-size);
+  height: var(--mr-scrollbar-size);
+}
+
+*::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: var(--mr-scrollbar-thumb);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--mr-scrollbar-thumb-hover);
+}
+
+#playlist-panel,
+#queue-list,
+#pl-list,
+#podcast-list,
+#search-results,
+#fx-panel,
+#track-detail-body,
+#home-list-body,
+#collect-list,
+.mineradio-virtual-list,
+.mini-queue-list,
+.home-list-body,
+.collect-list,
+.region-picker-list,
+.hotkey-dialog,
+.empty-home-shell {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--mr-scrollbar-thumb) transparent !important;
+}
+
+#playlist-panel::-webkit-scrollbar,
+#queue-list::-webkit-scrollbar,
+#pl-list::-webkit-scrollbar,
+#podcast-list::-webkit-scrollbar,
+#search-results::-webkit-scrollbar,
+#fx-panel::-webkit-scrollbar,
+#track-detail-body::-webkit-scrollbar,
+#home-list-body::-webkit-scrollbar,
+#collect-list::-webkit-scrollbar,
+.mineradio-virtual-list::-webkit-scrollbar,
+.mini-queue-list::-webkit-scrollbar,
+.home-list-body::-webkit-scrollbar,
+.collect-list::-webkit-scrollbar,
+.region-picker-list::-webkit-scrollbar,
+.hotkey-dialog::-webkit-scrollbar,
+.empty-home-shell::-webkit-scrollbar {
+  width: var(--mr-scrollbar-size) !important;
+  height: var(--mr-scrollbar-size) !important;
+}
+
+#playlist-panel::-webkit-scrollbar-track,
+#queue-list::-webkit-scrollbar-track,
+#pl-list::-webkit-scrollbar-track,
+#podcast-list::-webkit-scrollbar-track,
+#search-results::-webkit-scrollbar-track,
+#fx-panel::-webkit-scrollbar-track,
+#track-detail-body::-webkit-scrollbar-track,
+#home-list-body::-webkit-scrollbar-track,
+#collect-list::-webkit-scrollbar-track,
+.mineradio-virtual-list::-webkit-scrollbar-track,
+.mini-queue-list::-webkit-scrollbar-track,
+.home-list-body::-webkit-scrollbar-track,
+.collect-list::-webkit-scrollbar-track,
+.region-picker-list::-webkit-scrollbar-track,
+.hotkey-dialog::-webkit-scrollbar-track,
+.empty-home-shell::-webkit-scrollbar-track {
+  margin: 8px 0 !important;
+  border: 3px solid transparent !important;
+  border-radius: 999px !important;
+  background: var(--mr-scrollbar-track) !important;
+  background-clip: content-box !important;
+}
+
+#playlist-panel::-webkit-scrollbar-thumb,
+#queue-list::-webkit-scrollbar-thumb,
+#pl-list::-webkit-scrollbar-thumb,
+#podcast-list::-webkit-scrollbar-thumb,
+#search-results::-webkit-scrollbar-thumb,
+#fx-panel::-webkit-scrollbar-thumb,
+#track-detail-body::-webkit-scrollbar-thumb,
+#home-list-body::-webkit-scrollbar-thumb,
+#collect-list::-webkit-scrollbar-thumb,
+.mineradio-virtual-list::-webkit-scrollbar-thumb,
+.mini-queue-list::-webkit-scrollbar-thumb,
+.home-list-body::-webkit-scrollbar-thumb,
+.collect-list::-webkit-scrollbar-thumb,
+.region-picker-list::-webkit-scrollbar-thumb,
+.hotkey-dialog::-webkit-scrollbar-thumb,
+.empty-home-shell::-webkit-scrollbar-thumb {
+  min-height: 44px !important;
+  border: 2px solid transparent !important;
+  border-radius: 999px !important;
+  background-color: var(--mr-scrollbar-thumb) !important;
+  background-clip: content-box !important;
+}
+
+#playlist-panel:hover::-webkit-scrollbar-thumb,
+#queue-list:hover::-webkit-scrollbar-thumb,
+#pl-list:hover::-webkit-scrollbar-thumb,
+#podcast-list:hover::-webkit-scrollbar-thumb,
+#search-results:hover::-webkit-scrollbar-thumb,
+#fx-panel:hover::-webkit-scrollbar-thumb,
+#track-detail-body:hover::-webkit-scrollbar-thumb,
+#home-list-body:hover::-webkit-scrollbar-thumb,
+#collect-list:hover::-webkit-scrollbar-thumb,
+.mineradio-virtual-list:hover::-webkit-scrollbar-thumb,
+.mini-queue-list:hover::-webkit-scrollbar-thumb,
+.home-list-body:hover::-webkit-scrollbar-thumb,
+.collect-list:hover::-webkit-scrollbar-thumb,
+.region-picker-list:hover::-webkit-scrollbar-thumb,
+.hotkey-dialog:hover::-webkit-scrollbar-thumb,
+.empty-home-shell:hover::-webkit-scrollbar-thumb {
+  background-color: var(--mr-scrollbar-thumb-hover) !important;
+}
+
+.fx-panel-tabs,
+.track-detail-modal,
+.track-detail-modal *,
+.detail-scroll {
+  scrollbar-gutter: auto;
+}
+
+#playlist-panel {
+  scrollbar-gutter: stable;
+}
