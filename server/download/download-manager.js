@@ -11,6 +11,8 @@ let resolveUrlFn = null;
 let ffmpegPathFn = null;
 let musicDirFn = null;
 let store = null;
+let getCoverFn = null;
+let getLyricsFn = null;
 
 let activeJobs = new Map();
 let queue = [];
@@ -57,6 +59,8 @@ function setup(deps) {
   ffmpegPathFn = deps.ffmpegPath || null;
   musicDirFn = deps.musicDir || null;
   store = deps.store || null;
+  getCoverFn = deps.getCover || null;
+  getLyricsFn = deps.getLyrics || null;
 }
 
 function getJobStatus(jobId) {
@@ -260,6 +264,31 @@ async function processNextJob(job) {
     job.userAgent = urlResult.userAgent || '';
     job.level = urlResult.level || '';
 
+    if (!job.song.coverUrl && getCoverFn) {
+      try {
+        const coverUrl = await getCoverFn(job.song);
+        if (coverUrl) {
+          job.song.coverUrl = coverUrl;
+          managerLog(job.id, 'COVER_FETCHED', { url: coverUrl.substring(0, 80) });
+        }
+      } catch (e) {
+        managerLog(job.id, 'COVER_ERR', { error: e.message });
+      }
+    }
+
+    if (!job.song.lyricUrl && getLyricsFn) {
+      try {
+        const lyricData = await getLyricsFn(job.song);
+        if (lyricData && lyricData.lyric) {
+          job.song.lyricText = lyricData.lyric;
+          job.song.tlyricText = lyricData.tlyric || '';
+          managerLog(job.id, 'LYRIC_FETCHED', { length: lyricData.lyric.length });
+        }
+      } catch (e) {
+        managerLog(job.id, 'LYRIC_ERR', { error: e.message });
+      }
+    }
+
     if (typeof emitDownloadEvent === 'function') {
       emitDownloadEvent('start', job);
     }
@@ -329,6 +358,8 @@ async function downloadAndTranscode(job) {
         source: job.source,
         sourceQuality: job.sourceQuality,
         format: job.format,
+        converted: result.converted || false,
+        outputFormat: result.outputFormat || '',
         headers: job.headers || {},
       });
       if (assetResult && assetResult.success) {

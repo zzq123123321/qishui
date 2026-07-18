@@ -1017,6 +1017,26 @@ body.login-guide-active #login-guide-canvas{opacity:1}
 @media (max-width: 680px){.cover-crop-modal{padding:24px}.cover-crop-layout{grid-template-columns:1fr;justify-items:center;gap:18px}.cover-crop-side{width:100%}}
 .collect-modal{width:min(430px,90vw);max-width:min(430px,90vw);padding:28px;text-align:left}
 .collect-modal h2{text-align:center;margin-bottom:18px}
+.download-modal{width:min(430px,90vw);max-width:min(430px,90vw);padding:28px;text-align:left}
+.download-modal h2{text-align:center;margin-bottom:18px}
+.download-track-info{background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px}
+.download-track-info .track-name{font-weight:600;margin-bottom:4px}
+.download-track-info .track-artist{opacity:0.7}
+.download-options{margin-bottom:16px}
+.download-option-group{margin-bottom:14px}
+.download-option-group>label{display:block;font-size:12px;opacity:0.6;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
+.download-radio-group{display:flex;flex-direction:column;gap:6px}
+.download-radio{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background 0.15s}
+.download-radio:hover{background:rgba(255,255,255,0.05)}
+.download-radio input[type="radio"]{accent-color:var(--accent,#e74c3c)}
+.download-radio span{font-size:13px;font-weight:500}
+.download-radio small{font-size:11px;opacity:0.5;margin-left:auto}
+.download-status{margin-bottom:16px;text-align:center}
+.download-status #download-status-text{font-size:13px;margin-bottom:8px}
+.download-progress-bar{height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden}
+.download-progress-fill{height:100%;background:var(--accent,#e74c3c);width:0;transition:width 0.3s}
+#download-btn.downloading{animation:download-pulse 1.5s infinite}
+@keyframes download-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 .collect-current{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.035);margin-bottom:14px}
 .collect-current img,.collect-current .cover-placeholder{width:42px;height:42px;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.07);flex-shrink:0}
 .collect-title{font-size:12.5px;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3254,6 +3274,39 @@ html.control-glass-svg-ok #visual-guide-btn:hover{
     <div id="collect-list" class="collect-list"></div>
     <div class="btn-row">
       <button class="modal-btn" onclick="closeCollectModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div id="download-modal" class="modal-mask">
+  <div class="modal download-modal">
+    <h2>下载歌曲</h2>
+    <div id="download-track-info" class="download-track-info"></div>
+    <div class="download-options">
+      <div class="download-option-group">
+        <label>音质</label>
+        <div class="download-radio-group">
+          <label class="download-radio"><input type="radio" name="dl-quality" value="best" checked><span>最佳质量</span><small>Provider 最高可用</small></label>
+          <label class="download-radio"><input type="radio" name="dl-quality" value="exhigh"><span>极高 HQ</span><small>320kbps</small></label>
+          <label class="download-radio"><input type="radio" name="dl-quality" value="standard"><span>标准</span><small>128kbps</small></label>
+        </div>
+      </div>
+      <div class="download-option-group">
+        <label>格式</label>
+        <div class="download-radio-group">
+          <label class="download-radio"><input type="radio" name="dl-format" value="auto" checked><span>自动</span><small>保留原始格式</small></label>
+          <label class="download-radio"><input type="radio" name="dl-format" value="mp3"><span>MP3</span><small>320kbps 转码</small></label>
+          <label class="download-radio"><input type="radio" name="dl-format" value="flac"><span>FLAC</span><small>无损转码</small></label>
+        </div>
+      </div>
+    </div>
+    <div id="download-status" class="download-status" style="display:none">
+      <div id="download-status-text"></div>
+      <div id="download-progress-bar" class="download-progress-bar"><div id="download-progress-fill"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="modal-btn" onclick="closeDownloadModal()">取消</button>
+      <button id="download-start-btn" class="modal-btn primary" onclick="startDownloadFromModal()">开始下载</button>
     </div>
   </div>
 </div>

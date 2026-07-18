@@ -17773,6 +17773,141 @@ async function addCollectTargetToPlaylistLegacy(pid) {
     updateLikeButtons();
   }
 }
+
+var downloadTargetSong = null;
+var downloadPollingTimer = null;
+var downloadCurrentJobId = null;
+
+function openDownloadModal() {
+  var song = currentCoverSong();
+  if (!song || (!song.id && !song.sodaId && !song.mid)) {
+    showToast('当前没有可下载的歌曲');
+    return;
+  }
+  var provider = songProviderKey(song);
+  if (provider === 'local') {
+    showToast('本地文件无需下载');
+    return;
+  }
+  downloadTargetSong = song;
+  renderDownloadModal();
+  openGsapModal(document.getElementById('download-modal'));
+}
+
+function closeDownloadModal() {
+  if (downloadPollingTimer) { clearInterval(downloadPollingTimer); downloadPollingTimer = null; }
+  closeGsapModal(document.getElementById('download-modal'), function(){
+    downloadTargetSong = null;
+    downloadCurrentJobId = null;
+    var statusEl = document.getElementById('download-status');
+    if (statusEl) statusEl.style.display = 'none';
+    var startBtn = document.getElementById('download-start-btn');
+    if (startBtn) { startBtn.disabled = false; startBtn.style.display = ''; startBtn.textContent = '开始下载'; }
+    var fill = document.getElementById('download-progress-fill');
+    if (fill) fill.style.width = '0%';
+  });
+}
+
+function renderDownloadModal() {
+  var info = document.getElementById('download-track-info');
+  if (!info || !downloadTargetSong) return;
+  var song = downloadTargetSong;
+  info.innerHTML = '<div class="track-name">' + escHtml(song.name || '未知歌曲') + '</div>' +
+    '<div class="track-artist">' + escHtml(song.artist || '未知歌手') + '</div>';
+}
+
+function getDownloadOptions() {
+  var quality = 'best';
+  var format = 'auto';
+  var qRadios = document.querySelectorAll('input[name="dl-quality"]');
+  var fRadios = document.querySelectorAll('input[name="dl-format"]');
+  qRadios.forEach(function(r){ if (r.checked) quality = r.value; });
+  fRadios.forEach(function(r){ if (r.checked) format = r.value; });
+  return { quality: quality, format: format };
+}
+
+async function startDownloadFromModal() {
+  if (!downloadTargetSong) return;
+  var song = downloadTargetSong;
+  var opts = getDownloadOptions();
+  var startBtn = document.getElementById('download-start-btn');
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = '正在提交...'; }
+
+  var provider = songProviderKey(song);
+  var body = {
+    id: song.sodaId || song.mid || song.id || '',
+    source: provider,
+    quality: opts.quality,
+    format: opts.format,
+    name: song.name || 'Unknown',
+    artist: song.artist || 'Unknown',
+    album: song.album || '',
+  };
+
+  try {
+    var resp = await fetch('/api/download/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await resp.json();
+    if (data.error) {
+      showToast(data.error);
+      if (startBtn) { startBtn.disabled = false; startBtn.textContent = '开始下载'; }
+      return;
+    }
+    downloadCurrentJobId = data.jobId;
+    showDownloadStatus('queued', '已加入下载队列');
+    if (startBtn) startBtn.style.display = 'none';
+    pollDownloadStatus(data.jobId);
+  } catch (e) {
+    showToast('下载提交失败: ' + (e.message || e));
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '开始下载'; }
+  }
+}
+
+function showDownloadStatus(phase, text, percent) {
+  var statusEl = document.getElementById('download-status');
+  var textEl = document.getElementById('download-status-text');
+  var fillEl = document.getElementById('download-progress-fill');
+  if (statusEl) statusEl.style.display = '';
+  if (textEl) textEl.textContent = text || '';
+  if (fillEl) fillEl.style.width = (percent || 0) + '%';
+}
+
+function pollDownloadStatus(jobId) {
+  if (downloadPollingTimer) clearInterval(downloadPollingTimer);
+  downloadPollingTimer = setInterval(async function(){
+    try {
+      var resp = await fetch('/api/download/status?id=' + jobId);
+      var data = await resp.json();
+      if (data.status === 'completed') {
+        clearInterval(downloadPollingTimer);
+        downloadPollingTimer = null;
+        showDownloadStatus('completed', '下载完成 - ' + (data.fileSize ? (data.fileSize / 1024 / 1024).toFixed(1) + ' MB' : ''), 100);
+        showToast('下载完成');
+        setTimeout(closeDownloadModal, 1500);
+      } else if (data.status === 'failed') {
+        clearInterval(downloadPollingTimer);
+        downloadPollingTimer = null;
+        showDownloadStatus('failed', '下载失败: ' + (data.error || '未知错误'), 0);
+        var btn = document.getElementById('download-start-btn');
+        if (btn) { btn.style.display = ''; btn.disabled = false; btn.textContent = '重试'; }
+      } else if (data.status === 'cancelled') {
+        clearInterval(downloadPollingTimer);
+        downloadPollingTimer = null;
+        showDownloadStatus('cancelled', '已取消', 0);
+      } else {
+        var phase = data.progress && data.progress.phase || data.status;
+        var percent = data.progress && data.progress.percent || 0;
+        var label = { queued: '排队中...', resolving: '解析中...', downloading: '下载中...', transcoding: '转码中...' }[phase] || phase;
+        if (percent > 0) label += ' ' + percent + '%';
+        showDownloadStatus(phase, label, percent);
+      }
+    } catch (e) {}
+  }, 800);
+}
+
 function cloneSong(song){ return hydrateCustomCover(Object.assign({}, song)); }
 function avatarSrc(url) {
   if (!url) return '';

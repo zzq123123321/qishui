@@ -150,6 +150,7 @@ async function enhanceDownload(job, opts) {
   const dir = path.dirname(filePath);
   const baseName = path.basename(filePath, path.extname(filePath));
   const ext = path.extname(filePath);
+  const outputExt = ext.replace('.', '');
   const audioHeaders = headers || {};
 
   assetLog('START', { file: path.basename(filePath), dir, source });
@@ -163,10 +164,15 @@ async function enhanceDownload(job, opts) {
     downloadTime: new Date().toISOString(),
     quality: {
       requestedFormat: job.format || 'auto',
-      outputFormat: ext.replace('.', ''),
+      outputFormat: outputExt,
       sourceCodec: (sourceQuality && sourceQuality.codec) || 'unknown',
       sourceBitrate: (sourceQuality && sourceQuality.bitrate) || 0,
       outputBitrate: 320000,
+    },
+    conversion: {
+      converted: job.converted || false,
+      from: (sourceQuality && sourceQuality.codec) || 'unknown',
+      to: outputExt,
     },
   };
 
@@ -176,7 +182,10 @@ async function enhanceDownload(job, opts) {
   }
 
   let lyricText = '';
-  if (song.lyricUrl) {
+  if (song.lyricText) {
+    lyricText = song.lyricText;
+    assetLog('LYRIC', { source: 'inline', size: lyricText.length });
+  } else if (song.lyricUrl) {
     lyricText = await downloadLyric(song.lyricUrl, audioHeaders);
   }
 

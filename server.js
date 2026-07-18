@@ -4254,11 +4254,75 @@ sodaProvider.setup({
 });
 
 downloadStore.reset();
+async function getDownloadCover(song) {
+  const provider = song && (song.provider || song.source || song.type || '');
+  const isSoda = provider === 'soda' || song.sodaId || song.vid;
+  const isQQ = provider === 'qq' || song.mid || song.songmid;
+  try {
+    if (isSoda) {
+      const trackId = song.sodaId || song.id || '';
+      if (!trackId) return '';
+      const body = await sodaApiRequest('/luna/pc/track_v2', {}, { method: 'POST', body: sodaTrackV2Body(trackId) });
+      const track = body && body.body && (body.body.track || body.body.track_info || {});
+      const album = track && track.album || {};
+      const coverRaw = track.url_cover || track.cover || album.url_cover || album.cover || '';
+      return sodaImageUrl(coverRaw) || '';
+    }
+    if (isQQ) {
+      const mid = song.mid || song.songmid || '';
+      if (!mid) return '';
+      const info = await qqGetJSON('https://u.y.qq.com/cgi-bin/musicu.fcg', { songmid_list: [mid], song_type_list: [0], cmd: 'get_song_detail_yqq' });
+      const data = info && info.req_0 && info.req_0.data && info.req_0.data.track_info || {};
+      const albumInfo = data && data.album || {};
+      return albumInfo.pic || albumInfo.pic_url || '';
+    }
+    if (song.id) {
+      const info = await handleSongUrl(song.id, {}, 'exhigh', {});
+      return (info && info.album && info.album.picUrl) || '';
+    }
+    return '';
+  } catch (e) {
+    return '';
+  }
+}
+
+async function getDownloadLyrics(song) {
+  const provider = song && (song.provider || song.source || song.type || '');
+  const isSoda = provider === 'soda' || song.sodaId || song.vid;
+  const isQQ = provider === 'qq' || song.mid || song.songmid;
+  try {
+    if (isSoda) {
+      const trackId = song.sodaId || song.id || '';
+      if (!trackId) return null;
+      const result = await handleSodaLyric(trackId);
+      return result && result.lyric ? { lyric: result.lyric, tlyric: result.tlyric || '' } : null;
+    }
+    if (isQQ) {
+      const mid = song.mid || song.songmid || '';
+      const id = song.id || '';
+      if (!mid && !id) return null;
+      const result = await handleQQLyric(mid, id);
+      return result && result.lyric ? { lyric: result.lyric, tlyric: result.tlyric || '' } : null;
+    }
+    if (song.id) {
+      const body = await lyric_new({ id: song.id, cookie: userCookie, timestamp: Date.now() });
+      const lrc = body && body.lrc && body.lrc.lyric || '';
+      const tlyric = body && body.tlyric && body.tlyric.lyric || '';
+      return lrc ? { lyric: lrc, tlyric } : null;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 downloadManager.setup({
   resolveUrl: resolveTrackUrlForDownload,
   ffmpegPath: () => ffmpegBinaryPath,
   musicDir: () => process.env.MINERADIO_MUSIC_DIR || '',
   store: downloadStore,
+  getCover: getDownloadCover,
+  getLyrics: getDownloadLyrics,
 });
 
 async function resolveTrackUrlForDownload(song, quality, format) {
