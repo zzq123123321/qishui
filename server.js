@@ -4254,6 +4254,44 @@ sodaProvider.setup({
 });
 
 downloadStore.reset();
+function sodaFindCoverUrl(value, depth) {
+  if (value == null || depth > 8) return '';
+  if (typeof value === 'string') {
+    if (/^https?:\/\//i.test(value) && !value.endsWith('/img') && !value.endsWith('/img/') && !/\/img\/?$/.test(value) && /\.(jpg|jpeg|png|webp|gif|bmp|svg)(?:[?#]|$)/i.test(value)) return value;
+    return '';
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const found = sodaFindCoverUrl(value[i], depth + 1);
+      if (found) return found;
+    }
+    return '';
+  }
+  if (typeof value !== 'object') return '';
+  const keys = Object.keys(value);
+  const priorityKeys = ['track', 'track_info', 'album', 'song', 'data'];
+  for (const key of priorityKeys) {
+    if (keys.includes(key)) {
+      const result = sodaFindCoverUrl(value[key], depth + 1);
+      if (result) return result;
+    }
+  }
+  const coverKeys = ['url_cover', 'cover_url', 'cover', 'pic', 'picture', 'avatar', 'avatar_url', 'portrait', 'artwork', 'artwork_url', 'url_player_bg'];
+  for (const key of coverKeys) {
+    if (keys.includes(key)) {
+      const result = sodaFindCoverUrl(value[key], depth + 1);
+      if (result) return result;
+    }
+  }
+  for (const key of keys) {
+    if (!priorityKeys.includes(key) && !coverKeys.includes(key)) {
+      const result = sodaFindCoverUrl(value[key], depth + 1);
+      if (result) return result;
+    }
+  }
+  return '';
+}
+
 async function getDownloadCover(song) {
   const provider = song && (song.provider || song.source || song.type || '');
   const isSoda = provider === 'soda' || song.sodaId || song.vid;
@@ -4262,11 +4300,10 @@ async function getDownloadCover(song) {
     if (isSoda) {
       const trackId = song.sodaId || song.id || '';
       if (!trackId) return '';
-      const body = await sodaApiRequest('/luna/pc/track_v2', {}, { method: 'POST', body: sodaTrackV2Body(trackId) });
-      const track = body && body.body && (body.body.track || body.body.track_info || {});
-      const album = track && track.album || {};
-      const coverRaw = track.url_cover || track.cover || album.url_cover || album.cover || '';
-      return sodaImageUrl(coverRaw) || '';
+      const body = await sodaApiRequest('/luna/pc/track_v2', {}, { method: 'POST', body: sodaTrackV2Body(trackId, {}, { scene_name: 'search', queue_type: 'search' }) });
+      const found = sodaFindCoverUrl(body, 0);
+      if (found && /^https?:\/\//i.test(found)) return found;
+      return '';
     }
     if (isQQ) {
       const mid = song.mid || song.songmid || '';

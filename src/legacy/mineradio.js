@@ -17842,6 +17842,7 @@ async function startDownloadFromModal() {
     name: song.name || 'Unknown',
     artist: song.artist || 'Unknown',
     album: song.album || '',
+    coverUrl: song.cover || '',
   };
 
   try {
