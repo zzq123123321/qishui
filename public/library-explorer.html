@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library Explorer — Mineradio</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{font-family:"Noto Sans SC","PingFang SC","Inter",sans-serif;background:#08090B;color:#E8ECEF;height:100vh;overflow:hidden}
+:root{--bg:#08090B;--paper:#0E1014;--ink:#E8ECEF;--muted:#8A9099;--hair:#1A1D22;--accent:#00F5D4;--netease:#d95b67;--qq:#00F5D4;--soda:#ff7a9e}
+body{display:flex;flex-direction:column}
+header{padding:16px 24px;border-bottom:1px solid var(--hair);display:flex;align-items:center;gap:12px;flex-shrink:0}
+header h1{font-size:18px;font-weight:600;color:var(--accent)}
+header .sub{font-size:12px;color:var(--muted)}
+header .status{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--hair);color:var(--muted)}
+header .status.ok{color:var(--accent)}
+header .status.err{color:#ff6b6b}
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:340px;border-right:1px solid var(--hair);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar .section{padding:12px 16px;border-bottom:1px solid var(--hair)}
+.sidebar .section h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-card{background:var(--paper);border-radius:8px;padding:10px 12px}
+.stat-card .val{font-size:22px;font-weight:700;color:var(--accent)}
+.stat-card .lbl{font-size:11px;color:var(--muted);margin-top:2px}
+.stat-card.alt .val{color:var(--soda)}
+.stat-card.alt2 .val{color:#ffd93d}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main .toolbar{padding:8px 16px;border-bottom:1px solid var(--hair);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.main .toolbar .filter-btn{padding:4px 12px;border:1px solid var(--hair);border-radius:14px;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s}
+.main .toolbar .filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.main .toolbar .filter-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+.main .toolbar .count{font-size:12px;color:var(--muted);margin-left:auto}
+.timeline{flex:1;overflow-y:auto;padding:8px}
+.timeline::-webkit-scrollbar{width:6px}
+.timeline::-webkit-scrollbar-track{background:transparent}
+.timeline::-webkit-scrollbar-thumb{background:var(--hair);border-radius:3px}
+.event{display:flex;align-items:flex-start;padding:6px 8px;border-radius:6px;gap:10px;cursor:pointer;transition:background .12s}
+.event:hover{background:rgba(255,255,255,.04)}
+.event .time{font-size:11px;color:var(--muted);font-family:monospace;white-space:nowrap;min-width:70px;padding-top:1px}
+.event .icon{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.event .body{flex:1;min-width:0}
+.event .body .type{font-size:12px;font-weight:600}
+.event .body .detail{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.event .body .meta{font-size:10px;color:var(--muted);margin-top:1px;font-family:monospace;opacity:.6}
+.event .dur{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;padding-top:1px}
+.play_start .type{color:var(--accent)}
+.play_complete .type{color:#51cf66}
+.play_pause .type{color:#ffd93d}
+.play_resume .type{color:#74c0fc}
+.skip .type{color:#ff6b6b}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:14px}
+.loading .spinner{width:20px;height:20px;border:2px solid var(--hair);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;flex-direction:column;gap:8px}
+.empty .big{font-size:32px;opacity:.3}
+.health-list{font-size:12px}
+.health-list .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--hair)}
+.health-list .row .label{color:var(--muted)}
+.health-list .row .bad{color:#ff6b6b}
+.health-list .row .good{color:var(--accent)}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--paper);border:1px solid var(--hair);border-radius:12px;padding:20px;min-width:360px;max-width:460px;max-height:70vh;overflow-y:auto}
+.modal h2{font-size:15px;margin-bottom:12px;color:var(--accent)}
+.modal table{width:100%;font-size:12px;border-collapse:collapse}
+.modal table td{padding:5px 8px;border-bottom:1px solid var(--hair)}
+.modal table td:first-child{color:var(--muted);width:90px}
+.modal .close{float:right;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px}
+.modal .close:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Library Explorer</h1>
+  <span class="sub">AI 数据观察面板</span>
+  <span class="status" id="connStatus">检查中...</span>
+</header>
+<div class="layout">
+  <div class="sidebar">
+    <div class="section">
+      <h3>今日播放</h3>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="val" id="todayPlays">—</div><div class="lbl">播放</div></div>
+        <div class="stat-card alt"><div class="val" id="todayComplete">—</div><div class="lbl">完成</div></div>
+        <div class="stat-card alt2"><div class="val" id="todaySkips">—</div><div class="lbl">跳过</div></div>
+        <div class="stat-card"><div class="val" id="todayDuration">—</div><div class="lbl">时长(分钟)</div></div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>数据健康</h3>
+      <div class="health-list" id="healthPanel">
+        <div class="row"><span class="label">事件总数</span><span id="hEvents">—</span></div>
+        <div class="row"><span class="label">独唱歌</span><span id="hSongs">—</span></div>
+        <div class="row"><span class="label">空 song_id</span><span id="hMissingId">—</span></div>
+        <div class="row"><span class="label">空 source</span><span id="hMissingSource">—</span></div>
+        <div class="row"><span class="label">异常 duration</span><span id="hBadDuration">—</span></div>
+      </div>
+    </div>
+    <div class="section" style="border-bottom:none">
+      <h3>Top 歌曲</h3>
+      <div id="topSongsPanel" style="font-size:12px;max-height:160px;overflow-y:auto"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="toolbar">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="play_start">播放</button>
+      <button class="filter-btn" data-filter="play_complete">完成</button>
+      <button class="filter-btn" data-filter="skip">跳过</button>
+      <button class="filter-btn" data-filter="play_pause,play_resume">暂停/恢复</button>
+      <span class="count" id="eventCount">0 条</span>
+      <button style="margin-left:8px;padding:4px 10px;border:1px solid var(--hair);border-radius:14px;background:transparent;color:var(--muted);font-size:12px;cursor:pointer" onclick="refreshAll()">⟳ 刷新</button>
+    </div>
+    <div class="timeline" id="timeline">
+      <div class="loading"><div class="spinner"></div>加载中...</div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h2 id="modalTitle">歌曲详情</h2>
+    <table id="modalBody"></table>
+  </div>
+</div>
+<script>
+const API = '/api/library';
+let allEvents = [];
+let currentFilter = 'all';
+let healthCache = null;
+
+function $(s) { return document.getElementById(s); }
+function q(s) { return document.querySelector(s); }
+
+function fmtTime(ts) {
+  if (!ts) return '--:--:--';
+  var t = ts.indexOf('T') >= 0 ? new Date(ts) : new Date(ts.replace(' ', 'T') + 'Z');
+  if (isNaN(t.getTime())) return ts;
+  return t.toTimeString().slice(0, 8);
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  var t = ts.indexOf('T') >= 0 ? new Date(ts) : new Date(ts.replace(' ', 'T') + 'Z');
+  if (isNaN(t.getTime())) return ts;
+  return t.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDur(ms) {
+  if (!ms || ms < 0) return '';
+  var s = Math.round(ms / 1000);
+  var m = Math.floor(s / 60); s %= 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function iconFor(type) {
+  return { play_start: '\u25B6', play_complete: '\u2714', play_pause: '\u23F8', play_resume: '\u25B6', skip: '\u23ED' }[type] || '\u2022';
+}
+
+function labelFor(type) {
+  return { play_start: '播放', play_complete: '完成', play_pause: '暂停', play_resume: '恢复', skip: '跳过' }[type] || type;
+}
+
+async function api(path) {
+  var r = await fetch(API + path);
+  if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+  return r.json();
+}
+
+async function refreshAll() {
+  $('connStatus').textContent = '加载中...';
+  $('connStatus').className = 'status';
+  try {
+    var [stats, events] = await Promise.all([api('/stats'), api('/events?limit=500')]);
+    healthCache = stats;
+    allEvents = Array.isArray(events) ? events : [];
+    renderStats(stats);
+    renderTimeline();
+    renderHealth(stats);
+    renderTopSongs();
+    $('connStatus').textContent = '200 OK';
+    $('connStatus').className = 'status ok';
+  } catch (e) {
+    $('connStatus').textContent = 'ERR: ' + e.message;
+    $('connStatus').className = 'status err';
+    $('timeline').innerHTML = '<div class="empty"><div class="big">\u26A0</div>' + e.message + '</div>';
+  }
+}
+
+function renderStats(stats) {
+  var today = new Date();
+  var todayStr = today.toISOString().slice(0, 10);
+  var todayEvents = allEvents.filter(function(e) { return e.timestamp && e.timestamp.slice(0, 10) === todayStr; });
+  var plays = todayEvents.filter(function(e) { return e.event_type === 'play_start'; }).length;
+  var completes = todayEvents.filter(function(e) { return e.event_type === 'play_complete'; }).length;
+  var skips = todayEvents.filter(function(e) { return e.event_type === 'skip'; }).length;
+  var totalDur = todayEvents.reduce(function(s, e) { return s + (e.duration || 0); }, 0);
+  $('todayPlays').textContent = plays || 0;
+  $('todayComplete').textContent = completes || 0;
+  $('todaySkips').textContent = skips || 0;
+  $('todayDuration').textContent = Math.round(totalDur / 60000) || 0;
+  $('eventCount').textContent = allEvents.length + ' 条';
+}
+
+function renderTimeline() {
+  var list = allEvents;
+  if (currentFilter !== 'all') {
+    var types = currentFilter.split(',');
+    list = allEvents.filter(function(e) { return types.indexOf(e.event_type) >= 0; });
+  }
+  if (!list.length) {
+    $('timeline').innerHTML = '<div class="empty"><div class="big">\u2205</div>暂无事件</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < list.length; i++) {
+    var e = list[i];
+    html += '<div class="event ' + e.event_type + '" data-song="' + escapeAttr(e.song_id || '') + '">' +
+      '<span class="time">' + fmtTime(e.timestamp) + '</span>' +
+      '<span class="icon">' + iconFor(e.event_type) + '</span>' +
+      '<div class="body">' +
+        '<div class="type">' + labelFor(e.event_type) + '</div>' +
+        '<div class="detail">' + escapeHtml(e.song_id || '') + '</div>' +
+        (e.metadata ? '<div class="meta">' + escapeHtml(e.metadata.slice(0, 100)) + '</div>' : '') +
+      '</div>' +
+      (e.duration ? '<span class="dur">' + fmtDur(e.duration) + '</span>' : '') +
+    '</div>';
+  }
+  $('timeline').innerHTML = html;
+  Array.from($('timeline').children).forEach(function(el) {
+    el.addEventListener('click', function() {
+      var songId = this.getAttribute('data-song');
+      if (songId) showSongDetail(songId);
+    });
+  });
+}
+
+function renderHealth(stats) {
+  var missingId = 0, missingSource = 0, badDur = 0;
+  for (var i = 0; i < allEvents.length; i++) {
+    var e = allEvents[i];
+    if (!e.song_id) missingId++;
+    if (!e.source) missingSource++;
+    if (e.duration && (e.duration < 1000 || e.duration > 7200000)) badDur++;
+  }
+  $('hEvents').textContent = stats.totalEvents || allEvents.length;
+  $('hSongs').textContent = stats.uniqueSongs || 0;
+  $('hMissingId').innerHTML = missingId ? '<span class="bad">' + missingId + '</span>' : '<span class="good">0</span>';
+  $('hMissingSource').innerHTML = missingSource ? '<span class="bad">' + missingSource + '</span>' : '<span class="good">0</span>';
+  $('hBadDuration').innerHTML = badDur ? '<span class="bad">' + badDur + '</span>' : '<span class="good">0</span>';
+}
+
+async function renderTopSongs() {
+  try {
+    var top = await api('/history/top?limit=10');
+    var data = Array.isArray(top) ? top : [];
+    if (!data.length) { $('topSongsPanel').innerHTML = '<div style="color:var(--muted)">暂无数据</div>'; return; }
+    var html = '';
+    for (var i = 0; i < data.length; i++) {
+      var s = data[i];
+      html += '<div style="padding:4px 0;border-bottom:1px solid var(--hair);cursor:pointer" onclick="showSongDetail(\'' + escapeAttr(s.song_id || '') + '\')">' +
+        '<div style="display:flex;justify-content:space-between">' +
+          '<span style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(s.title || s.song_id || '?') + '</span>' +
+          '<span style="color:var(--accent)">' + (s.play_count || 0) + 'x</span>' +
+        '</div>' +
+        (s.artist ? '<div style="font-size:10px;color:var(--muted);margin-top:1px">' + escapeHtml(s.artist) + '</div>' : '') +
+      '</div>';
+    }
+    $('topSongsPanel').innerHTML = html;
+  } catch (e) {
+    $('topSongsPanel').innerHTML = '<div style="color:var(--muted)">加载失败</div>';
+  }
+}
+
+async function showSongDetail(songId) {
+  if (!songId) return;
+  $('modalTitle').textContent = songId;
+  try {
+    var events = await api('/events?song_id=' + encodeURIComponent(songId) + '&limit=200');
+    var his = Array.isArray(events) ? events : [];
+    var plays = his.filter(function(e) { return e.event_type === 'play_start'; }).length;
+    var completes = his.filter(function(e) { return e.event_type === 'play_complete'; }).length;
+    var skips = his.filter(function(e) { return e.event_type === 'skip'; }).length;
+    var totalListen = his.reduce(function(s, e) { return s + (e.duration || 0); }, 0);
+    var lastPlay = his.length ? his[0].timestamp : null;
+    var sources = [];
+    his.forEach(function(e) { if (e.source && sources.indexOf(e.source) < 0) sources.push(e.source); });
+    var html = '<tr><td>song_id</td><td>' + escapeHtml(songId) + '</td></tr>' +
+      '<tr><td>播放</td><td>' + plays + '</td></tr>' +
+      '<tr><td>完成</td><td>' + completes + '</td></tr>' +
+      '<tr><td>跳过</td><td>' + skips + '</td></tr>' +
+      '<tr><td>完成率</td><td>' + (plays ? Math.round(completes / plays * 100) + '%' : '—') + '</td></tr>' +
+      '<tr><td>总收听</td><td>' + fmtDur(totalListen) + '</td></tr>' +
+      '<tr><td>来源</td><td>' + (sources.join(', ') || '—') + '</td></tr>' +
+      '<tr><td>最近</td><td>' + fmtDate(lastPlay) + '</td></tr>' +
+      '<tr><td>事件数</td><td>' + his.length + '</td></tr>';
+    $('modalBody').innerHTML = html;
+  } catch (e) {
+    $('modalBody').innerHTML = '<tr><td colspan="2" style="color:#ff6b6b">' + escapeHtml(e.message) + '</td></tr>';
+  }
+  $('modal').classList.add('show');
+}
+
+function closeModal() { $('modal').classList.remove('show'); }
+$('modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escapeAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+Array.from(document.querySelectorAll('.filter-btn')).forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    Array.from(document.querySelectorAll('.filter-btn')).forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+    currentFilter = this.getAttribute('data-filter');
+    renderTimeline();
+  });
+});
+
+refreshAll();
+setInterval(refreshAll, 15000);
+</script>
+</body>
+</html>
