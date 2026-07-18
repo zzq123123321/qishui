@@ -16,6 +16,20 @@ out
 
 # Editor directories and files
 .vscode/*
+
+# Sensitive / user data
+.soda-cookie*
+Soda/
+Music/
+*.mp3
+*.flac
+*.m4a
+*.wav
+*.ogg
+
+# Auto-generated reports
+DOWNLOAD_E2E_TEST_REPORT.md
+
 !.vscode/extensions.json
 .idea
 .DS_Store
