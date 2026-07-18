@@ -4265,11 +4265,13 @@ async function resolveTrackUrlForDownload(song, quality, format) {
   const provider = song && (song.provider || song.source || song.type || '');
   const isSoda = provider === 'soda' || song.sodaId || song.vid;
   const isQQ = provider === 'qq' || song.mid || song.songmid;
-  console.log(`[DL-RESOLVE] provider=${provider} isSoda=${isSoda} isQQ=${isQQ} id=${song && (song.sodaId || song.mid || song.id || '')} q=${quality} fmt=${format}`);
+  const isBest = quality === 'best';
+  const effectiveQuality = isBest ? 'hires' : (quality || 'exhigh');
+  console.log(`[DL-RESOLVE] provider=${provider} isSoda=${isSoda} isQQ=${isQQ} id=${song && (song.sodaId || song.mid || song.id || '')} q=${effectiveQuality} fmt=${format} best=${isBest}`);
   try {
     if (isSoda) {
-      const info = await handleSodaSongUrl(song.sodaId || song.id || '', quality || 'exhigh', {});
-      console.log(`[DL-RESOLVE] soda result: playable=${info && info.playable} url=${info && info.url ? info.url.substring(0, 80) : 'null'} error=${info && info.error || 'none'}`);
+      const info = await handleSodaSongUrl(song.sodaId || song.id || '', effectiveQuality, {});
+      console.log(`[DL-RESOLVE] soda result: playable=${info && info.playable} url=${info && info.url ? info.url.substring(0, 80) : 'null'} level=${info && info.level} quality=${info && info.quality} rawQuality=${info && info.rawQuality} error=${info && info.error || 'none'}`);
       if (info && info.url && info.playable) {
         let audioUrl = info.url;
         let headers = {};
@@ -4294,17 +4296,21 @@ async function resolveTrackUrlForDownload(song, quality, format) {
         headers = sodaAudioRequestHeadersFor(audioUrl, '', { includeCookie: true });
         const ffmpegHeaderText = sodaFfmpegHeaderText(audioUrl);
         const ua = sodaUserAgent();
-        return { url: audioUrl, format: info.localTranscode ? 'mp3' : (format || 'mp3'), totalBytes: 0, decryptionKey, headers, ffmpegHeaderText, userAgent: ua };
+        return { url: audioUrl, format: format || 'auto', totalBytes: 0, decryptionKey, headers, ffmpegHeaderText, userAgent: ua, level: info.level || '', rawQuality: info.rawQuality || '' };
       }
       return { error: info && info.error || 'SODA_URL_UNAVAILABLE' };
     }
     if (isQQ) {
-      const info = await handleQQSongUrl(song.mid || song.songmid || song.id || '', song.mediaMid || song.media_mid || '', quality || 'exhigh', {});
-      if (info && info.url && info.playable) return { url: info.url, format: format || 'mp3', totalBytes: 0, decryptionKey: '', headers: {}, ffmpegHeaderText: '', userAgent: '' };
+      const qqQuality = isBest ? 'lossless' : effectiveQuality;
+      const info = await handleQQSongUrl(song.mid || song.songmid || song.id || '', song.mediaMid || song.media_mid || '', qqQuality, {});
+      console.log(`[DL-RESOLVE] qq result: playable=${info && info.playable} url=${info && info.url ? info.url.substring(0, 80) : 'null'}`);
+      if (info && info.url && info.playable) return { url: info.url, format: format || 'auto', totalBytes: 0, decryptionKey: '', headers: {}, ffmpegHeaderText: '', userAgent: '', level: info.level || '', rawQuality: info.rawQuality || '' };
       return { error: info && info.error || 'QQ_URL_UNAVAILABLE' };
     }
-    const info = await handleSongUrl(song.id || '', {}, quality || 'exhigh', {});
-    if (info && info.url && info.playable) return { url: info.url, format: format || 'mp3', totalBytes: 0, decryptionKey: '', headers: {}, ffmpegHeaderText: '', userAgent: '' };
+    const neQuality = isBest ? 'hires' : effectiveQuality;
+    const info = await handleSongUrl(song.id || '', {}, neQuality, {});
+    console.log(`[DL-RESOLVE] netease result: playable=${info && info.playable} url=${info && info.url ? info.url.substring(0, 80) : 'null'}`);
+    if (info && info.url && info.playable) return { url: info.url, format: format || 'auto', totalBytes: 0, decryptionKey: '', headers: {}, ffmpegHeaderText: '', userAgent: '', level: info.level || '', rawQuality: info.rawQuality || '' };
     return { error: info && info.error || 'NETEASE_URL_UNAVAILABLE' };
   } catch (e) {
     console.error(`[DL-RESOLVE] error:`, e.message);
@@ -10559,9 +10565,11 @@ const server = http.createServer(async (req, res) => {
         name: body.name || 'Unknown',
         artist: body.artist || 'Unknown',
         album: body.album || '',
+        coverUrl: body.coverUrl || body.cover || '',
+        lyricUrl: body.lyricUrl || '',
       };
-      const format = body.format === 'flac' ? 'flac' : 'mp3';
-      const quality = body.quality || 'exhigh';
+      const format = body.format || 'auto';
+      const quality = body.quality || 'best';
       const source = body.source || (song.sodaId ? 'soda' : (song.mid ? 'qq' : 'netease'));
       const result = downloadManager.startDownload(song, { format, quality, source });
       sendJSON(res, result);

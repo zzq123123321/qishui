@@ -13,51 +13,49 @@ function ffmpegAvailable(ffmpegPath) {
   return !!(ffmpegPath && fs.existsSync(ffmpegPath));
 }
 
-function detectSourceQuality(headers, contentType) {
-  const cl = parseInt(headers['content-length'] || '0', 10);
-  const ct = String(contentType || headers['content-type'] || '').toLowerCase();
-  let codec = 'unknown';
-  let estimatedBitrate = 0;
-
-  if (ct.includes('flac')) {
-    codec = 'flac';
-    estimatedBitrate = 1000000;
-  } else if (ct.includes('mpeg') || ct.includes('mp3')) {
-    codec = 'mp3';
-    estimatedBitrate = 320000;
-  } else if (ct.includes('ogg')) {
-    codec = 'ogg';
-    estimatedBitrate = 256000;
-  } else if (ct.includes('aac') || ct.includes('m4a')) {
-    codec = 'aac';
-    estimatedBitrate = 256000;
-  } else if (ct.includes('wav')) {
-    codec = 'wav';
-    estimatedBitrate = 1411000;
-  } else {
-    codec = 'unknown';
-    estimatedBitrate = 320000;
-  }
-
-  return {
-    codec,
-    estimatedBitrate,
-    contentLength: cl,
-    contentType: ct,
-    isLossless: codec === 'flac' || codec === 'wav',
-  };
-}
-
-function canProduceLossless(sourceQuality) {
-  return sourceQuality && sourceQuality.isLossless;
-}
-
 function downloadLog(tag, data) {
   const ts = new Date().toISOString().slice(11, 23);
-  console.log(`[DL-${tag}] ${ts}`, JSON.stringify(data, null, 2));
+  console.log(`[DL-${tag}] ${ts}`, typeof data === 'string' ? data : JSON.stringify(data));
 }
 
-function buildFfmpegArgsFromUrl(audioUrl, outputPath, format, decryptionKey, opts) {
+function detectSourceCodecFromUrl(audioUrl) {
+  const lower = String(audioUrl || '').toLowerCase();
+  if (/\.(flac)(?:[?#]|$)/i.test(lower)) return { codec: 'flac', ext: 'flac', isLossless: true };
+  if (/\.(m4a|aac)(?:[?#]|$)/i.test(lower)) return { codec: 'aac', ext: 'm4a', isLossless: false };
+  if (/\.(mp3)(?:[?#]|$)/i.test(lower)) return { codec: 'mp3', ext: 'mp3', isLossless: false };
+  if (/\.(ogg)(?:[?#]|$)/i.test(lower)) return { codec: 'ogg', ext: 'ogg', isLossless: false };
+  if (/\.(wav)(?:[?#]|$)/i.test(lower)) return { codec: 'wav', ext: 'wav', isLossless: true };
+  if (/\.(mp4|m4v)(?:[?#]|$)/i.test(lower)) return { codec: 'aac', ext: 'm4a', isLossless: false };
+  return null;
+}
+
+function resolveOutputFormat(requestedFormat, audioUrl, decryptionKey) {
+  if (requestedFormat === 'flac') {
+    return { ext: 'flac', codec: 'flac', container: 'flac', needsTranscode: true };
+  }
+  if (requestedFormat === 'mp3') {
+    return { ext: 'mp3', codec: 'mp3', container: 'mp3', needsTranscode: true };
+  }
+
+  const detected = detectSourceCodecFromUrl(audioUrl);
+  if (detected && !decryptionKey) {
+    return {
+      ext: detected.ext,
+      codec: detected.codec,
+      container: detected.ext,
+      needsTranscode: false,
+      isLossless: detected.isLossless,
+    };
+  }
+
+  if (decryptionKey) {
+    return { ext: 'mp3', codec: 'mp3', container: 'mp3', needsTranscode: true };
+  }
+
+  return { ext: 'mp3', codec: 'mp3', container: 'mp3', needsTranscode: true };
+}
+
+function buildFfmpegArgs(audioUrl, outputTmpPath, outputFormat, decryptionKey, opts) {
   const { ffmpegHeaderText, userAgent } = opts || {};
   const args = [
     '-hide_banner',
@@ -81,16 +79,18 @@ function buildFfmpegArgsFromUrl(audioUrl, outputPath, format, decryptionKey, opt
   args.push('-i', audioUrl);
   args.push('-vn');
 
-  if (format === 'flac') {
-    args.push('-codec:a', 'flac');
-    args.push('-f', 'flac');
-  } else {
-    args.push('-codec:a', 'libmp3lame');
-    args.push('-b:a', '320k');
-    args.push('-f', 'mp3');
+  if (outputFormat.needsTranscode) {
+    if (outputFormat.codec === 'flac') {
+      args.push('-codec:a', 'flac');
+      args.push('-f', 'flac');
+    } else {
+      args.push('-codec:a', 'libmp3lame');
+      args.push('-b:a', '320k');
+      args.push('-f', 'mp3');
+    }
   }
 
-  args.push(outputPath);
+  args.push(outputTmpPath);
   return args;
 }
 
@@ -99,6 +99,7 @@ function execute(opts) {
     audioUrl,
     format,
     filePath,
+    baseName,
     decryptionKey,
     ffmpegPath,
     onProgress,
@@ -117,15 +118,18 @@ function execute(opts) {
     return Promise.resolve({ success: false, error: 'FFMPEG_UNAVAILABLE' });
   }
 
-  const tmpOutput = tmpFilePath() + '.' + (format === 'flac' ? 'flac' : 'mp3');
-  const finalPath = filePath;
+  const outputFormat = resolveOutputFormat(format || 'auto', audioUrl, decryptionKey);
+  const finalExt = '.' + outputFormat.ext;
+  const finalPath = filePath.replace(/\.[^.]+$/, finalExt);
+  const tmpOutput = tmpFilePath() + '.' + outputFormat.ext;
 
   downloadLog('START', {
     audioUrl: audioUrl.substring(0, 120) + (audioUrl.length > 120 ? '...' : ''),
-    format,
+    requestedFormat: format,
+    resolvedFormat: outputFormat.ext,
+    needsTranscode: outputFormat.needsTranscode,
     output: finalPath,
-    headers: headers ? { Cookie: headers['Cookie'] ? 'YES' : 'NO' } : 'NONE',
-    ffmpegPath,
+    hasCookie: !!(headers && headers['Cookie']),
   });
 
   return new Promise((resolve) => {
@@ -135,11 +139,53 @@ function execute(opts) {
       return;
     }
 
-    const args = buildFfmpegArgsFromUrl(audioUrl, tmpOutput, format, decryptionKey, { ffmpegHeaderText, userAgent });
+    if (!outputFormat.needsTranscode) {
+      downloadLog('DIRECT_SAVE', { reason: 'source format preserved', ext: outputFormat.ext });
+      downloadDirect(audioUrl, tmpOutput, { ffmpegHeaderText, userAgent, decryptionKey }, onProgress, abortCheck)
+        .then((result) => {
+          if (abortCheck && abortCheck()) {
+            safeUnlink(tmpOutput);
+            resolve({ success: false, error: 'ABORTED' });
+            return;
+          }
+          if (!result.success) {
+            resolve(result);
+            return;
+          }
+          moveFile(tmpOutput, finalPath);
+          downloadLog('SUCCESS', { filePath: finalPath, fileSize: result.fileSize, format: outputFormat.ext });
+          if (onProgress) {
+            onProgress({
+              phase: 'completed',
+              downloaded: result.fileSize,
+              total: result.fileSize,
+              percent: 100,
+              sourceQuality: result.sourceQuality,
+              converted: false,
+            });
+          }
+          resolve({
+            success: true,
+            filePath: finalPath,
+            fileSize: result.fileSize,
+            outputFormat: outputFormat.ext,
+            sourceQuality: result.sourceQuality,
+            converted: false,
+          });
+        })
+        .catch((e) => {
+          safeUnlink(tmpOutput);
+          downloadLog('ERROR', { error: e.message });
+          resolve({ success: false, error: e.message });
+        });
+      return;
+    }
+
+    const args = buildFfmpegArgs(audioUrl, tmpOutput, outputFormat, decryptionKey, { ffmpegHeaderText, userAgent });
 
     downloadLog('FFMPEG', {
       args: args.slice(0, 5).join(' ') + ' ...',
-      urlLen: audioUrl.length,
+      outputFormat: outputFormat.ext,
     });
 
     const child = spawn(ffmpegPath, args, {
@@ -203,25 +249,9 @@ function execute(opts) {
         const stat = fs.statSync(tmpOutput);
         const fileSize = stat.size;
 
-        const dir = path.dirname(finalPath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        moveFile(tmpOutput, finalPath);
 
-        try {
-          fs.renameSync(tmpOutput, finalPath);
-        } catch (renameErr) {
-          if (renameErr && renameErr.code === 'EXDEV') {
-            fs.copyFileSync(tmpOutput, finalPath);
-            safeUnlink(tmpOutput);
-          } else {
-            throw renameErr;
-          }
-        }
-
-        downloadLog('SUCCESS', {
-          filePath: finalPath,
-          fileSize,
-          format,
-        });
+        downloadLog('SUCCESS', { filePath: finalPath, fileSize, format: outputFormat.ext });
 
         if (onProgress) {
           onProgress({
@@ -230,7 +260,7 @@ function execute(opts) {
             total: fileSize,
             percent: 100,
             sourceQuality: null,
-            converted: false,
+            converted: true,
           });
         }
 
@@ -238,8 +268,9 @@ function execute(opts) {
           success: true,
           filePath: finalPath,
           fileSize,
-          sourceQuality: { codec: 'unknown', bitrate: 0, isLossless: false },
-          converted: false,
+          outputFormat: outputFormat.ext,
+          sourceQuality: { codec: outputFormat.codec, bitrate: 320000, isLossless: outputFormat.isLossless || false },
+          converted: true,
         });
       } catch (e) {
         safeUnlink(tmpOutput);
@@ -250,6 +281,82 @@ function execute(opts) {
   });
 }
 
+function downloadDirect(audioUrl, tmpPath, opts, onProgress, abortCheck) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(audioUrl);
+    const client = url.protocol === 'https:' ? require('https') : require('http');
+    const req = client.get(audioUrl, {
+      headers: {
+        'User-Agent': opts.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://www.qishui.com/',
+      },
+      timeout: 30000,
+    }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        downloadDirect(res.headers.location, tmpPath, opts, onProgress, abortCheck).then(resolve).catch(reject);
+        return;
+      }
+      if (res.statusCode !== 200) {
+        reject(new Error('HTTP_' + res.statusCode));
+        return;
+      }
+      const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+      const ct = res.headers['content-type'] || '';
+      let codec = 'unknown';
+      let bitrate = 0;
+      if (ct.includes('flac')) { codec = 'flac'; bitrate = 1000000; }
+      else if (ct.includes('mpeg') || ct.includes('mp3')) { codec = 'mp3'; bitrate = 320000; }
+      else if (ct.includes('aac') || ct.includes('m4a')) { codec = 'aac'; bitrate = 256000; }
+      else if (ct.includes('ogg')) { codec = 'ogg'; bitrate = 256000; }
+      else if (ct.includes('wav')) { codec = 'wav'; bitrate = 1411000; }
+
+      let downloaded = 0;
+      const fileStream = fs.createWriteStream(tmpPath);
+
+      res.on('data', (chunk) => {
+        downloaded += chunk.length;
+        if (onProgress) {
+          onProgress({
+            phase: 'downloading',
+            downloaded,
+            total: totalBytes,
+            percent: totalBytes > 0 ? Math.round((downloaded / totalBytes) * 100) : 0,
+            sourceQuality: { codec, bitrate, isLossless: codec === 'flac' || codec === 'wav', contentType: ct },
+          });
+        }
+      });
+
+      res.pipe(fileStream);
+      fileStream.on('finish', () => {
+        fileStream.close();
+        resolve({
+          success: true,
+          fileSize: downloaded,
+          sourceQuality: { codec, bitrate: bitrate, isLossless: codec === 'flac' || codec === 'wav' },
+        });
+      });
+      fileStream.on('error', (err) => { safeUnlink(tmpPath); reject(err); });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('DOWNLOAD_TIMEOUT')); });
+  });
+}
+
+function moveFile(src, dest) {
+  const dir = path.dirname(dest);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  try {
+    fs.renameSync(src, dest);
+  } catch (e) {
+    if (e && e.code === 'EXDEV') {
+      fs.copyFileSync(src, dest);
+      safeUnlink(src);
+    } else {
+      throw e;
+    }
+  }
+}
+
 function safeUnlink(filePath) {
   try {
     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -258,7 +365,7 @@ function safeUnlink(filePath) {
 
 module.exports = {
   execute,
-  buildFfmpegArgsFromUrl,
-  detectSourceQuality,
-  canProduceLossless,
+  buildFfmpegArgs,
+  detectSourceCodecFromUrl,
+  resolveOutputFormat,
 };
