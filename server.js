@@ -76,6 +76,7 @@ const sodaResolver = require('./server/providers/soda/soda-playback-resolver');
 const sodaProvider = require('./server/providers/soda/soda-provider');
 const downloadStore = require('./server/download/download-store');
 const downloadManager = require('./server/download/download-manager');
+const { LibraryService } = require('./server/music-library/library-service');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -9339,6 +9340,9 @@ if (process.env.MINERADIO_SODA_COOKIE_WORKER === '1') {
   return;
 }
 
+const musicLibrary = new LibraryService(path.join(mineradioUserDataDir(__dirname), 'library.db'));
+try { musicLibrary.initialize(); console.log('[Library] Music library database initialized'); } catch (e) { console.warn('[Library] Init error:', e.message); }
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost:' + PORT);
   const pn = url.pathname;
@@ -10729,6 +10733,48 @@ const server = http.createServer(async (req, res) => {
       const jobs = downloadManager.getAllJobs();
       sendJSON(res, { jobs });
     } catch (err) { console.error('[DownloadList]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/library/event') {
+    try {
+      if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+      const body = await readRequestBody(req);
+      musicLibrary.recordEvent(body);
+      sendJSON(res, { ok: true });
+    } catch (err) { console.warn('[LibraryEvent]', err); sendJSON(res, { ok: false, error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/library/stats') {
+    try {
+      sendJSON(res, await musicLibrary.getStats());
+    } catch (err) { console.warn('[LibraryStats]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/library/events') {
+    try {
+      const songId = url.searchParams.get('song_id') || '';
+      const limit = parseInt(url.searchParams.get('limit'), 10) || 50;
+      sendJSON(res, await musicLibrary.getEvents(songId, limit));
+    } catch (err) { console.warn('[LibraryEvents]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/library/history/recent') {
+    try {
+      const limit = parseInt(url.searchParams.get('limit'), 10) || 50;
+      sendJSON(res, await musicLibrary.getRecentHistory(limit));
+    } catch (err) { console.warn('[LibraryRecent]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/library/history/top') {
+    try {
+      const limit = parseInt(url.searchParams.get('limit'), 10) || 50;
+      sendJSON(res, await musicLibrary.getTopPlayed(limit));
+    } catch (err) { console.warn('[LibraryTop]', err); sendJSON(res, { error: err.message }, 500); }
     return;
   }
 

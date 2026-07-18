@@ -13395,6 +13395,7 @@ function beginListenSession(song, context) {
     listenMs: 0,
     maxProgress: 0,
   };
+  emitPlayEvent('play_start', snap.key);
 }
 function updateListenStatsTick(force) {
   if (!audio || !audio.duration || audio.paused) return;
@@ -13419,6 +13420,9 @@ function finalizeListenSession(completed) {
   updateListenStatsTick(true);
   var session = listenSession;
   listenSession = null;
+  if (!completed && session.listenMs >= 5000 && session.song && session.song.key) {
+    emitPlayEvent('skip', session.song.key, { listen_ms: Math.round(session.listenMs), progress: session.maxProgress, duration: session.song.duration });
+  }
   var effective = completed || session.listenMs >= 45000 || session.maxProgress >= 0.5 || (!audio || !audio.duration ? session.listenMs >= 30000 : false);
   if (!effective) return;
   var now = Date.now();
@@ -13466,6 +13470,24 @@ function finalizeListenSession(completed) {
   saveListenStatsState();
   safeRenderQueuePanel('listen-history-update', { scrollCurrent: false });
   if (emptyHomeActive) renderHomeDiscover();
+  if (completed && record.key) emitPlayEvent('play_complete', record.key, { listen_ms: Math.round(session.listenMs), progress: session.maxProgress, duration: session.song.duration });
+}
+function emitPlayEvent(eventType, songId, metadata) {
+  if (!songId) return;
+  try {
+    fetch('/api/library/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: eventType,
+        song_id: songId,
+        source: '',
+        duration: (metadata && metadata.listen_ms) || 0,
+        context: { hour: new Date().getHours() },
+        metadata: metadata || {},
+      }),
+    });
+  } catch (e) {}
 }
 function mostPlayedSong(scope) {
   var list = Object.keys(listenStatsState.songs || {}).map(function(key){ return listenStatsState.songs[key]; });
@@ -19725,6 +19747,8 @@ function syncPlaybackStateFromAudioEvent(reason) {
   if (!isPlaying) hideLoading();
   if (reason === 'play' || reason === 'playing') switchPlaybackVisualToEmily();
   forcePlaybackControlsInteractive();
+  if (reason === 'pause' && listenSession && listenSession.song) emitPlayEvent('play_pause', listenSession.song.key);
+  if (reason === 'play' && listenSession && listenSession.song) emitPlayEvent('play_resume', listenSession.song.key);
 }
 
 function isPlaybackRecursionError(err) {
