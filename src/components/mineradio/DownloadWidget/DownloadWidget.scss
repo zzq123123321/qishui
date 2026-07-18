@@ -1,0 +1,397 @@
+.download-float {
+  position: fixed;
+  z-index: 50;
+  bottom: 86px;
+  right: 24px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.float-dot {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(14, 16, 20, .88);
+  border: 1px solid rgba(255, 255, 255, .10);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .22s cubic-bezier(.16, 1, .3, 1),
+              box-shadow .22s,
+              background .22s,
+              border-color .22s;
+}
+
+.download-float:hover .float-dot {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .40), 0 0 20px rgba(244, 210, 138, .08);
+  border-color: rgba(255, 255, 255, .18);
+}
+
+.dot-icon {
+  display: block;
+  transition: opacity .3s, transform .3s;
+}
+
+.idle-icon {
+  color: rgba(255, 255, 255, .70);
+}
+
+/* Downloading: ring rotation + breathing */
+.is-downloading .ring-icon {
+  animation: ring-rotate 2s linear infinite;
+}
+.is-downloading .float-dot {
+  border-color: rgba(244, 210, 138, .24);
+  box-shadow: 0 0 20px rgba(244, 210, 138, .06);
+  animation: dot-breathe 2.4s ease-in-out infinite;
+}
+
+.ring-bg {
+  opacity: .4;
+}
+
+.ring-fill {
+  transition: stroke-dashoffset .35s ease;
+  filter: drop-shadow(0 0 6px rgba(244, 210, 138, .30));
+}
+
+.ring-arrow,
+.ring-arrow-stem {
+  animation: arrow-pulse 1.6s ease-in-out infinite;
+  opacity: .9;
+}
+.ring-arrow-stem {
+  animation-delay: .1s;
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { opacity: .7; }
+  50% { opacity: 1; }
+}
+
+/* Completed: checkmark pop */
+.is-completed .check-icon {
+  animation: check-pop .35s cubic-bezier(.16, 1, .3, 1);
+}
+.is-completed .float-dot {
+  border-color: rgba(74, 222, 128, .30);
+  background: rgba(74, 222, 128, .08);
+}
+.is-completed .idle-icon {
+  color: rgba(255, 255, 255, .35);
+}
+
+/* Failed: shake */
+.is-failed .fail-icon {
+  animation: fail-shake .4s ease;
+}
+.is-failed .float-dot {
+  border-color: rgba(255, 143, 157, .30);
+  background: rgba(255, 143, 157, .08);
+}
+
+.dot-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #f4d28a;
+  color: #08090b;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Cover fly animation */
+.cover-fly {
+  position: fixed;
+  z-index: 55;
+  pointer-events: none;
+  animation: cover-fly-to-dot .55s cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+.cover-fly-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+}
+
+@keyframes cover-fly-to-dot {
+  0% {
+    transform: translate(0, 0) scale(1.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--fly-dx, 0), var(--fly-dy, 0)) scale(1);
+    opacity: .6;
+  }
+}
+
+/* Hover card */
+.float-hover-card {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .075);
+  background: rgba(14, 16, 20, .95);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+  animation: hover-card-in .18s ease;
+}
+
+@keyframes hover-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hover-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.hover-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .72);
+  letter-spacing: .3px;
+}
+
+.hover-card-count {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .40);
+}
+.hover-card-count.done {
+  color: rgba(74, 222, 128, .60);
+}
+.hover-card-count.fail {
+  color: #ff8f9d;
+}
+
+/* Current job highlight in hover card */
+.hover-current-job {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  margin-bottom: 4px;
+}
+
+.hover-current-cover {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, .06);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+}
+
+.hover-current-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hover-current-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-current-artist {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .42);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-current-status {
+  flex-shrink: 0;
+  min-width: 64px;
+  text-align: right;
+}
+
+.hover-job-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, .05);
+}
+
+.hover-job-row:first-child {
+  border-top: none;
+}
+
+.hover-job-cover {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, .06);
+  flex-shrink: 0;
+}
+
+.hover-job-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hover-job-name {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, .88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-job-artist {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .40);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.hover-job-status {
+  flex-shrink: 0;
+  min-width: 56px;
+  text-align: right;
+}
+
+.hover-progress-track {
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+
+.hover-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f4d28a, #f4a28a);
+  transition: width .3s ease;
+}
+
+.status-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+
+.status-label.queued {
+  color: rgba(255, 255, 255, .40);
+}
+
+.status-label.done {
+  color: rgba(74, 222, 128, .72);
+}
+
+.status-label.fail {
+  color: #ff8f9d;
+}
+
+.hover-card-footer {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, .05);
+  font-size: 10px;
+  color: rgba(255, 255, 255, .35);
+  text-align: center;
+  letter-spacing: .2px;
+}
+
+/* Animations */
+@keyframes ring-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes dot-breathe {
+  0%, 100% { box-shadow: 0 0 12px rgba(244, 210, 138, .04); }
+  50% { box-shadow: 0 0 24px rgba(244, 210, 138, .12); }
+}
+
+@keyframes check-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Completed heartbeat pulse */
+.is-completed .float-dot {
+  animation: completed-heartbeat 3s ease-in-out 1;
+}
+@keyframes completed-heartbeat {
+  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, .20); }
+  30% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+
+@keyframes fail-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+/* Responsive */
+@media (max-width: 920px) {
+  .download-float {
+    bottom: 76px;
+    right: 16px;
+  }
+  .float-dot {
+    width: 36px;
+    height: 36px;
+  }
+  .float-hover-card {
+    width: 220px;
+    right: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .download-float {
+    bottom: 68px;
+    right: 12px;
+  }
+  .float-dot {
+    width: 32px;
+    height: 32px;
+  }
+  .dot-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .float-hover-card {
+    display: none;
+  }
+}

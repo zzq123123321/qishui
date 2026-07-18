@@ -249,4 +249,28 @@ body.empty-home-active #bubble-danmaku-layer,body.home-wallpaper-preview #bubble
 .custom-lyric-status.fail{color:#ff8f9d}
 .lyric-source-row{display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0 12px}
 .lyric-source-seg button.has-custom::after{content:'';display:inline-block;width:5px;height:5px;margin-left:5px;border-radius:50%;background:rgba(126,226,168,.86);vertical-align:middle;box-shadow:0 0 10px rgba(126,226,168,.50)}
+.download-modal{width:min(400px,90vw);max-width:min(400px,90vw);padding:28px;text-align:left}
+.download-modal h2{text-align:center;margin-bottom:14px}
+.download-track-info{padding:11px 12px;margin-bottom:14px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.035)}
+.download-track-info .track-name{font-size:13px;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.download-track-info .track-artist{margin-top:3px;font-size:10.5px;color:rgba(255,255,255,.42)}
+.download-options{margin-bottom:14px}
+.download-option-group{margin-bottom:12px}
+.download-option-group:last-child{margin-bottom:0}
+.download-option-label{font-size:11px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.46);text-transform:uppercase;margin-bottom:7px}
+.download-option-row{display:flex;gap:8px;flex-wrap:wrap}
+.download-radio{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);color:rgba(255,255,255,.72);font-size:11.5px;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+.download-radio:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+.download-radio input{display:none}
+.download-radio:has(input:checked){background:rgba(244,210,138,.12);border-color:rgba(244,210,138,.48);color:var(--champagne)}
+.download-status{margin-bottom:10px}
+.download-progress{height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:8px}
+.download-progress-fill{height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#f4d28a,#f4a28a);transition:width .3s ease}
+.download-status-text{font-size:11px;color:rgba(255,255,255,.55);text-align:center;letter-spacing:.3px}
+.download-modal .btn-row{margin-top:0}
+.download-location{margin-bottom:12px}
+.download-location-row{display:flex;align-items:center;gap:8px;margin-top:7px}
+.download-location-path{flex:1;min-width:0;font-size:11px;color:rgba(255,255,255,.55);padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:monospace;letter-spacing:.2px}
+.download-location-btn{height:30px;padding:0 12px;font-size:11px;flex-shrink:0}
+.download-location-error{margin-top:6px;font-size:10.5px;color:#ff8f9d;display:none}
 

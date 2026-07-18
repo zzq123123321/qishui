@@ -10,6 +10,8 @@
     <PlayerControls />
     <NativeInputs />
     <AppModals />
+    <DownloadWidget />
+    <DownloadCenter />
     <NotificationsGuide />
   </div>
 </template>
@@ -25,6 +27,7 @@ import StageHud from './components/mineradio/StageHud';
 import PlayerControls from './components/mineradio/PlayerControls';
 import NativeInputs from './components/mineradio/NativeInputs';
 import AppModals from './components/mineradio/AppModals';
+import { DownloadWidget, DownloadCenter } from './components/mineradio/DownloadWidget';
 import NotificationsGuide from './components/mineradio/NotificationsGuide';
 import { useMineradioRuntime } from './composables/useMineradioRuntime.js';
 

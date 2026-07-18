@@ -17800,6 +17800,92 @@ var downloadTargetSong = null;
 var downloadPollingTimer = null;
 var downloadCurrentJobId = null;
 
+async function openDownloadWidget() {
+  var song = currentCoverSong();
+  if (!song || (!song.id && !song.sodaId && !song.mid)) {
+    showToast('当前没有可下载的歌曲');
+    return;
+  }
+  var provider = songProviderKey(song);
+  if (provider === 'local') {
+    showToast('本地文件无需下载');
+    return;
+  }
+
+  var opts = { quality: 'best', format: 'auto' };
+  if (window.__downloadState) {
+    var s = window.__downloadState.getSettings();
+    if (s.quality) opts.quality = s.quality;
+    if (s.format) opts.format = s.format;
+  }
+
+  var body = {
+    id: song.sodaId || song.mid || song.id || '',
+    source: provider,
+    quality: opts.quality,
+    format: opts.format,
+    name: song.name || 'Unknown',
+    artist: song.artist || 'Unknown',
+    album: song.album || '',
+    coverUrl: song.cover || '',
+  };
+
+  try {
+    var resp = await fetch('/api/download/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await resp.json();
+    if (data.error) { showToast(data.error); return; }
+
+    if (window.__downloadState) {
+      window.__downloadState.addJob(song, data.jobId);
+      var coverEl = document.getElementById('control-cover');
+      if (coverEl) {
+        var rect = coverEl.getBoundingClientRect();
+        window.__downloadState.triggerCoverFly(song.cover || '', rect.left + rect.width / 2, rect.top + rect.height / 2);
+      }
+    }
+
+    showToast('已加入下载队列');
+    pollWidgetDownloadStatus(data.jobId);
+  } catch (e) {
+    showToast('下载提交失败: ' + (e.message || e));
+  }
+}
+
+function pollWidgetDownloadStatus(jobId) {
+  var timer;
+  (function poll() {
+    timer = setTimeout(async function() {
+      try {
+        var resp = await fetch('/api/download/status?id=' + jobId);
+        var data = await resp.json();
+        if (window.__downloadState) window.__downloadState.updateJob(jobId, data);
+        if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') return;
+        poll();
+      } catch (e) { poll(); }
+    }, 800);
+  })();
+}
+
+function playDownloadJob(job) {
+  if (!job) return;
+  var song = cloneSong({
+    sodaId: job.sourceId || '',
+    mid: job.sourceId || '',
+    id: job.sourceId || '',
+    name: job.title || 'Unknown',
+    artist: job.artist || 'Unknown',
+    cover: job.coverUrl || '',
+    source: job.source || 'soda',
+  });
+  playQueue.unshift(song);
+  currentIdx = 0;
+  playQueueAt(0);
+}
+
 function openDownloadModal() {
   var song = currentCoverSong();
   if (!song || (!song.id && !song.sodaId && !song.mid)) {
@@ -17813,6 +17899,7 @@ function openDownloadModal() {
   }
   downloadTargetSong = song;
   renderDownloadModal();
+  refreshDownloadLocation();
   openGsapModal(document.getElementById('download-modal'));
 }
 
@@ -17929,6 +18016,36 @@ function pollDownloadStatus(jobId) {
       }
     } catch (e) {}
   }, 800);
+}
+
+async function refreshDownloadLocation() {
+  try {
+    var resp = await fetch('/api/download/config');
+    var data = await resp.json();
+    var el = document.getElementById('download-location-path');
+    if (el) {
+      el.textContent = data.musicDir || '默认位置';
+    }
+  } catch (e) {}
+}
+
+async function pickDownloadLocation() {
+  if (window.desktopWindow && window.desktopWindow.pickDirectory) {
+    var dir = await window.desktopWindow.pickDirectory();
+    if (!dir) return;
+    try {
+      var resp = await fetch('/api/download/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ musicDir: dir }),
+      });
+      var data = await resp.json();
+      if (data.ok) refreshDownloadLocation();
+    } catch (e) {
+      var errEl = document.getElementById('download-location-error');
+      if (errEl) { errEl.textContent = '保存失败'; errEl.style.display = ''; }
+    }
+  }
 }
 
 function cloneSong(song){ return hydrateCustomCover(Object.assign({}, song)); }
@@ -30578,6 +30695,7 @@ scheduleNextRenderFrame(0);
   if (typeof closeCoverColorPicker === 'function') window.closeCoverColorPicker = closeCoverColorPicker;
   if (typeof closeCoverCropModal === 'function') window.closeCoverCropModal = closeCoverCropModal;
   if (typeof closeCustomLyricModal === 'function') window.closeCustomLyricModal = closeCustomLyricModal;
+  if (typeof closeDownloadModal === 'function') window.closeDownloadModal = closeDownloadModal;
   if (typeof closeGsapModal === 'function') window.closeGsapModal = closeGsapModal;
   if (typeof closeHomeListModal === 'function') window.closeHomeListModal = closeHomeListModal;
   if (typeof closeHotkeySettings === 'function') window.closeHotkeySettings = closeHotkeySettings;
@@ -30785,6 +30903,7 @@ scheduleNextRenderFrame(0);
   if (typeof getRenderLoadTier === 'function') window.getRenderLoadTier = getRenderLoadTier;
   if (typeof getRenderPixelLoad === 'function') window.getRenderPixelLoad = getRenderPixelLoad;
   if (typeof getRenderPixelRatio === 'function') window.getRenderPixelRatio = getRenderPixelRatio;
+  if (typeof getDownloadOptions === 'function') window.getDownloadOptions = getDownloadOptions;
   if (typeof getStageLyricLockBounds === 'function') window.getStageLyricLockBounds = getStageLyricLockBounds;
   if (typeof goHome === 'function') window.goHome = goHome;
   if (typeof growPlaylistPanelDetailRenderLimit === 'function') window.growPlaylistPanelDetailRenderLimit = growPlaylistPanelDetailRenderLimit;
@@ -31038,6 +31157,9 @@ scheduleNextRenderFrame(0);
   if (typeof openCoverCropModal === 'function') window.openCoverCropModal = openCoverCropModal;
   if (typeof openCustomBackgroundDb === 'function') window.openCustomBackgroundDb = openCustomBackgroundDb;
   if (typeof openCustomLyricModal === 'function') window.openCustomLyricModal = openCustomLyricModal;
+  if (typeof openDownloadModal === 'function') window.openDownloadModal = openDownloadModal;
+  if (typeof openDownloadWidget === 'function') window.openDownloadWidget = openDownloadWidget;
+  if (typeof playDownloadJob === 'function') window.playDownloadJob = playDownloadJob;
   if (typeof openFromPickerEvent === 'function') window.openFromPickerEvent = openFromPickerEvent;
   if (typeof openGsapModal === 'function') window.openGsapModal = openGsapModal;
   if (typeof openHistoryArtist === 'function') window.openHistoryArtist = openHistoryArtist;
@@ -31137,6 +31259,9 @@ scheduleNextRenderFrame(0);
   if (typeof podcastMetaText === 'function') window.podcastMetaText = podcastMetaText;
   if (typeof pointerCardHit === 'function') window.pointerCardHit = pointerCardHit;
   if (typeof positionVisualGuideStep === 'function') window.positionVisualGuideStep = positionVisualGuideStep;
+  if (typeof pollDownloadStatus === 'function') window.pollDownloadStatus = pollDownloadStatus;
+  if (typeof refreshDownloadLocation === 'function') window.refreshDownloadLocation = refreshDownloadLocation;
+  if (typeof pickDownloadLocation === 'function') window.pickDownloadLocation = pickDownloadLocation;
   if (typeof preferredLyricSourceForSong === 'function') window.preferredLyricSourceForSong = preferredLyricSourceForSong;
   if (typeof prepareLocalBeatAnalysis === 'function') window.prepareLocalBeatAnalysis = prepareLocalBeatAnalysis;
   if (typeof preparePlaybackFadeIn === 'function') window.preparePlaybackFadeIn = preparePlaybackFadeIn;
@@ -31245,6 +31370,7 @@ scheduleNextRenderFrame(0);
   if (typeof renameUserFxArchive === 'function') window.renameUserFxArchive = renameUserFxArchive;
   if (typeof renderArtistSongList === 'function') window.renderArtistSongList = renderArtistSongList;
   if (typeof renderCollectModal === 'function') window.renderCollectModal = renderCollectModal;
+  if (typeof renderDownloadModal === 'function') window.renderDownloadModal = renderDownloadModal;
   if (typeof renderCoverPickerSwatches === 'function') window.renderCoverPickerSwatches = renderCoverPickerSwatches;
   if (typeof renderDetailComments === 'function') window.renderDetailComments = renderDetailComments;
   if (typeof renderHomeDashboard === 'function') window.renderHomeDashboard = renderHomeDashboard;
@@ -31526,6 +31652,7 @@ scheduleNextRenderFrame(0);
   if (typeof shouldUseWallpaperLyricCameraLock === 'function') window.shouldUseWallpaperLyricCameraLock = shouldUseWallpaperLyricCameraLock;
   if (typeof shouldUseWallpaperSafeShelfCamera === 'function') window.shouldUseWallpaperSafeShelfCamera = shouldUseWallpaperSafeShelfCamera;
   if (typeof showAIDepthChip === 'function') window.showAIDepthChip = showAIDepthChip;
+  if (typeof showDownloadStatus === 'function') window.showDownloadStatus = showDownloadStatus;
   if (typeof showBeatChip === 'function') window.showBeatChip = showBeatChip;
   if (typeof showGestureCursor === 'function') window.showGestureCursor = showGestureCursor;
   if (typeof showGestureHUD === 'function') window.showGestureHUD = showGestureHUD;
@@ -31577,6 +31704,7 @@ scheduleNextRenderFrame(0);
   if (typeof stageLyricTargetQuaternion === 'function') window.stageLyricTargetQuaternion = stageLyricTargetQuaternion;
   if (typeof startAnalysis === 'function') window.startAnalysis = startAnalysis;
   if (typeof startColorMixTween === 'function') window.startColorMixTween = startColorMixTween;
+  if (typeof startDownloadFromModal === 'function') window.startDownloadFromModal = startDownloadFromModal;
   if (typeof startHeadTracking === 'function') window.startHeadTracking = startHeadTracking;
   if (typeof startHotkeyCapture === 'function') window.startHotkeyCapture = startHotkeyCapture;
   if (typeof startGestureControl === 'function') window.startGestureControl = startGestureControl;

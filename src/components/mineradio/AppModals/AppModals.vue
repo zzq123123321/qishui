@@ -239,4 +239,50 @@
     </div>
   </div>
 </div>
+
+<div id="download-modal" class="modal-mask">
+  <div class="modal download-modal">
+    <h2>下载歌曲</h2>
+    <div id="download-track-info" class="download-track-info">
+      <div class="track-name">未知歌曲</div>
+      <div class="track-artist">未知歌手</div>
+    </div>
+    <div class="download-options">
+      <div class="download-option-group">
+        <div class="download-option-label">音质</div>
+        <div class="download-option-row">
+          <label class="download-radio"><input type="radio" name="dl-quality" value="best" checked> 最佳</label>
+          <label class="download-radio"><input type="radio" name="dl-quality" value="high"> 高</label>
+          <label class="download-radio"><input type="radio" name="dl-quality" value="medium"> 中</label>
+          <label class="download-radio"><input type="radio" name="dl-quality" value="low"> 低</label>
+        </div>
+      </div>
+      <div class="download-option-group">
+        <div class="download-option-label">格式</div>
+        <div class="download-option-row">
+          <label class="download-radio"><input type="radio" name="dl-format" value="auto" checked> 自动</label>
+          <label class="download-radio"><input type="radio" name="dl-format" value="mp3"> MP3</label>
+          <label class="download-radio"><input type="radio" name="dl-format" value="flac"> FLAC</label>
+          <label class="download-radio"><input type="radio" name="dl-format" value="ogg"> OGG</label>
+        </div>
+      </div>
+    </div>
+    <div class="download-location">
+      <div class="download-option-label">保存位置</div>
+      <div class="download-location-row">
+        <span id="download-location-path" class="download-location-path">正在获取…</span>
+        <button class="modal-btn download-location-btn" onclick="pickDownloadLocation()">选择目录</button>
+      </div>
+      <div id="download-location-error" class="download-location-error"></div>
+    </div>
+    <div id="download-status" class="download-status" style="display:none">
+      <div class="download-progress"><div id="download-progress-fill" class="download-progress-fill"></div></div>
+      <div id="download-status-text" class="download-status-text"></div>
+    </div>
+    <div class="btn-row">
+      <button class="modal-btn" onclick="closeDownloadModal()">取消</button>
+      <button id="download-start-btn" class="modal-btn primary" onclick="startDownloadFromModal()">开始下载</button>
+    </div>
+  </div>
+</div>
 </template>

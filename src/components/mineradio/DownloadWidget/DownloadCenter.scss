@@ -1,0 +1,457 @@
+.download-center-modal {
+  width: min(480px, 92vw);
+  max-height: min(600px, 80vh);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 22px 14px;
+  flex-shrink: 0;
+}
+
+.dc-head h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .92);
+  margin: 0;
+  letter-spacing: .3px;
+}
+
+.dc-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dc-settings-btn,
+.dc-close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, .50);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .18s, background .18s;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.dc-settings-btn:hover,
+.dc-close-btn:hover {
+  color: rgba(255, 255, 255, .85);
+  background: rgba(255, 255, 255, .06);
+}
+
+/* Settings panel */
+.dc-settings-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 22px 20px;
+}
+
+.dc-settings-back {
+  font-size: 12px;
+  color: rgba(255, 255, 255, .50);
+  cursor: pointer;
+  padding: 4px 0 14px;
+  transition: color .18s;
+}
+
+.dc-settings-back:hover {
+  color: rgba(255, 255, 255, .85);
+}
+
+.dc-settings-body .download-option-group {
+  margin-bottom: 14px;
+}
+
+.dc-settings-body .download-option-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: rgba(255, 255, 255, .46);
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+
+.dc-settings-body .download-option-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dc-settings-body .download-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .045);
+  color: rgba(255, 255, 255, .72);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background .18s, border-color .18s, color .18s;
+}
+
+.dc-settings-body .download-radio:hover {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .18);
+  color: #fff;
+}
+
+.dc-settings-body .download-radio input {
+  display: none;
+}
+
+.dc-settings-body .download-radio.checked {
+  background: rgba(244, 210, 138, .12);
+  border-color: rgba(244, 210, 138, .48);
+  color: var(--champagne);
+}
+
+.dc-settings-body .download-location-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.dc-settings-body .download-location-path {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, .55);
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .035);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+  letter-spacing: .2px;
+}
+
+.dc-settings-body .download-location-btn {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* Tabs */
+.dc-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dc-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 22px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.dc-tab {
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, .45);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color .18s, background .18s;
+}
+
+.dc-tab:hover {
+  color: rgba(255, 255, 255, .75);
+  background: rgba(255, 255, 255, .04);
+}
+
+.dc-tab.active {
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+}
+
+.dc-tab-count {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .35);
+  background: rgba(255, 255, 255, .08);
+  padding: 1px 6px;
+  border-radius: 6px;
+  line-height: 16px;
+}
+
+.dc-tab.active .dc-tab-count {
+  color: rgba(255, 255, 255, .60);
+  background: rgba(255, 255, 255, .12);
+}
+
+/* Job list */
+.dc-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 22px 16px;
+}
+
+.dc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.dc-empty-icon {
+  margin-bottom: 12px;
+  opacity: .5;
+}
+
+.dc-empty-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, .30);
+}
+
+.dc-job {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+  position: relative;
+}
+
+.dc-job:last-child {
+  border-bottom: none;
+}
+
+.dc-job-cover {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, .06);
+  flex-shrink: 0;
+}
+
+.dc-job-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dc-job-title {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, .88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dc-job-artist {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, .40);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dc-job-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.dc-progress-track {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+
+.dc-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f4d28a, #f4a28a);
+  transition: width .3s ease;
+}
+
+.dc-progress-label {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, .40);
+  white-space: nowrap;
+  min-width: 48px;
+  text-align: right;
+}
+
+.dc-job-eta {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .30);
+  margin-top: 3px;
+}
+
+.dc-job-size {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .30);
+  margin-top: 3px;
+}
+
+.dc-job-error {
+  font-size: 10px;
+  color: #ff8f9d;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dc-job-action {
+  flex-shrink: 0;
+}
+
+.dc-action-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, .40);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .18s, background .18s;
+}
+
+.dc-action-btn:hover {
+  color: rgba(255, 255, 255, .80);
+  background: rgba(255, 255, 255, .06);
+}
+
+.dc-action-btn.cancel:hover {
+  color: #ff8f9d;
+  background: rgba(255, 143, 157, .10);
+}
+
+.dc-action-btn.retry:hover {
+  color: var(--champagne);
+  background: rgba(244, 210, 138, .10);
+}
+
+.dc-action-btn.open:hover {
+  color: #4ade80;
+  background: rgba(74, 222, 128, .10);
+}
+
+.dc-action-btn.del:hover {
+  color: #ff8f9d;
+  background: rgba(255, 143, 157, .10);
+}
+
+.dc-job-confirm {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(28, 28, 30, .96);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(8px);
+  min-width: 180px;
+}
+
+.dc-confirm-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .88);
+}
+
+.dc-confirm-hint {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, .35);
+}
+
+.dc-confirm-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dc-confirm-btn {
+  height: 26px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+
+.dc-confirm-btn.cancel {
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .60);
+}
+
+.dc-confirm-btn.cancel:hover {
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+}
+
+.dc-confirm-btn.ok {
+  background: rgba(255, 143, 157, .20);
+  color: #ff8f9d;
+}
+
+.dc-confirm-btn.ok:hover {
+  background: rgba(255, 143, 157, .35);
+  color: #ffb3bd;
+}
+
+/* Job status colors */
+.dc-job.dc-job-completed .dc-job-title {
+  color: rgba(255, 255, 255, .60);
+}
+
+.dc-job.dc-job-failed .dc-job-title {
+  color: rgba(255, 143, 157, .72);
+}
+
+@media (max-width: 620px) {
+  .download-center-modal {
+    width: 100vw;
+    max-height: 90vh;
+    border-radius: 16px 16px 0 0;
+    margin-top: auto;
+  }
+}

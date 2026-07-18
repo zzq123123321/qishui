@@ -4074,15 +4074,20 @@ function refreshSodaCookieFromClient(force, opts) {
 
 function applySodaLocalSyncResult(result) {
   result = result || {};
+  const beforeHasCookie = !!sodaCookie;
+  const beforeCookieLen = sodaCookie ? sodaCookie.length : 0;
+  const beforeLoginTicket = sodaCookieHasLoginTicket();
   if (result.lastLocalSync && typeof result.lastLocalSync === 'object') {
+    const cc = Number(result.lastLocalSync.cookies) || 0;
+    const cr = Number(result.lastLocalSync.cookieRows) || 0;
     sodaLastLocalSync = {
       checkedAt: Number(result.lastLocalSync.checkedAt) || Date.now(),
       clientDir: String(result.lastLocalSync.clientDir || ''),
       userDataDirs: Array.isArray(result.lastLocalSync.userDataDirs) ? result.lastLocalSync.userDataDirs : [],
       cookieDbs: Array.isArray(result.lastLocalSync.cookieDbs) ? result.lastLocalSync.cookieDbs : [],
-      cookieRows: Number(result.lastLocalSync.cookieRows) || 0,
+      cookieRows: cr,
       decryptFailures: Number(result.lastLocalSync.decryptFailures) || 0,
-      cookies: Number(result.lastLocalSync.cookies) || 0,
+      cookies: cc,
       localStateCount: Number(result.lastLocalSync.localStateCount) || 0,
       encryptedPrefixes: result.lastLocalSync.encryptedPrefixes && typeof result.lastLocalSync.encryptedPrefixes === 'object' ? result.lastLocalSync.encryptedPrefixes : {},
       error: String(result.lastLocalSync.error || ''),
@@ -4105,12 +4110,19 @@ function applySodaLocalSyncResult(result) {
       cookieDbs: sodaLastLocalSync.cookieDbs,
     };
   }
+  const resultHasCookie = !!result.cookie;
+  const resultCookieLen = result.cookie ? result.cookie.length : 0;
+  const differs = result.cookie !== sodaCookie;
   if (result.cookie && result.cookie !== sodaCookie) {
     saveSodaCookie(result.cookie);
     sodaLoginInfoCache = null;
     sodaLoginInfoCacheAt = 0;
     sodaDeviceInfoCache = null;
+  } else {
   }
+  const afterHasCookie = !!sodaCookie;
+  const afterCookieLen = sodaCookie ? sodaCookie.length : 0;
+  const afterLoginTicket = sodaCookieHasLoginTicket();
 }
 
 function runSodaCookieWorker(opts) {
@@ -4357,7 +4369,7 @@ async function getDownloadLyrics(song) {
 downloadManager.setup({
   resolveUrl: resolveTrackUrlForDownload,
   ffmpegPath: () => ffmpegBinaryPath,
-  musicDir: () => process.env.MINERADIO_MUSIC_DIR || '',
+  musicDir: () => require('./server/config/user-config').getMusicDir(),
   store: downloadStore,
   getCover: getDownloadCover,
   getLyrics: getDownloadLyrics,
@@ -9307,9 +9319,15 @@ async function runSodaCookieWorkerCli() {
   }
   try {
     const cookie = readSodaCookieFromClient(opts || {});
+    const _cookieCount = sodaLastLocalSync.cookies || 0;
+    const _cookieRows = sodaLastLocalSync.cookieRows || 0;
+    const _hostCount = (sodaLastLocalSync.encryptedPrefixes ? Object.keys(sodaLastLocalSync.encryptedPrefixes).length : 0);
     process.stdout.write(JSON.stringify({
       ok: true,
       cookie,
+      _cookieCount,
+      _cookieRows,
+      _hostCount,
       clientDir: sodaLastLocalSync.clientDir || '',
       lastLocalSync: sodaLastLocalSync,
       userDataDiscoveryCache: sodaUserDataDiscoveryCache,
@@ -9318,6 +9336,9 @@ async function runSodaCookieWorkerCli() {
     process.stdout.write(JSON.stringify({
       ok: false,
       error: e.message || String(e),
+      _cookieCount: 0,
+      _cookieRows: 0,
+      _hostCount: 0,
       lastLocalSync: {
         ...sodaLastLocalSync,
         checkedAt: Date.now(),
@@ -10733,6 +10754,35 @@ const server = http.createServer(async (req, res) => {
       const jobs = downloadManager.getAllJobs();
       sendJSON(res, { jobs });
     } catch (err) { console.error('[DownloadList]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/download/delete') {
+    try {
+      if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return; }
+      const body = await readRequestBody(req);
+      const jobId = body.jobId || '';
+      if (!jobId) { sendJSON(res, { error: 'Missing jobId' }, 400); return; }
+      const result = downloadManager.deleteDownload(jobId);
+      sendJSON(res, result);
+    } catch (err) { console.error('[DownloadDelete]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/download/config') {
+    try {
+      if (req.method === 'POST') {
+        const body = await readRequestBody(req);
+        const { musicDir } = body;
+        require('./server/config/user-config').setMusicDir(musicDir || '');
+        sendJSON(res, { ok: true });
+      } else {
+        const config = require('./server/config/user-config');
+        const musicDir = config.getMusicDir() || path.join(process.env.USERPROFILE || '', 'Music', 'Mineradio');
+        const usedConfig = !!config.readConfig().musicDir;
+        sendJSON(res, { musicDir, usedConfig });
+      }
+    } catch (err) { console.error('[DownloadConfig]', err); sendJSON(res, { error: err.message }, 500); }
     return;
   }
 

@@ -15,5 +15,7 @@
 @use './shared-glass';
 @use '../components/mineradio/VisualControls/VisualControlsPolish';
 @use '../components/mineradio/StageHud/StageLyrics';
+@use '../components/mineradio/DownloadWidget/DownloadWidget';
+@use '../components/mineradio/DownloadWidget/DownloadCenter';
 @use './responsive';
 @use './scrollbars';

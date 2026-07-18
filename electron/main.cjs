@@ -1399,6 +1399,20 @@ ipcMain.handle('qq-music-clear-login', async () => {
   return clearQQMusicLoginSession();
 });
 
+ipcMain.handle('mineradio-pick-directory', async (event) => {
+  try {
+    const owner = getSenderWindow(event);
+    const result = await dialog.showOpenDialog(owner, {
+      title: '选择下载目录',
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || !result.filePaths || !result.filePaths[0]) return null;
+    return result.filePaths[0];
+  } catch (e) {
+    return null;
+  }
+});
+
 ipcMain.handle('mineradio-open-update-installer', async (_event, filePath) => {
   try {
     const target = path.resolve(String(filePath || ''));
@@ -1411,6 +1425,16 @@ ipcMain.handle('mineradio-open-update-installer', async (_event, filePath) => {
     return error ? { ok: false, error } : { ok: true };
   } catch (e) {
     return { ok: false, error: e.message || 'OPEN_UPDATE_FAILED' };
+  }
+});
+
+ipcMain.handle('mineradio-show-item-in-folder', async (_event, filePath) => {
+  try {
+    if (!filePath) return { ok: false, error: 'NO_PATH' };
+    shell.showItemInFolder(String(filePath));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message || 'SHOW_FAILED' };
   }
 });
 

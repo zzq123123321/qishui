@@ -29,18 +29,15 @@ function safeFileName(name) {
     .slice(0, 200);
 }
 
-function getOutputDir(source) {
-  const base = musicDirFn ? musicDirFn() : path.join(
+function getOutputDir() {
+  const base = musicDirFn ? (musicDirFn() || path.join(
+    process.env.HOME || process.env.USERPROFILE || '',
+    'Music', 'Mineradio'
+  )) : path.join(
     process.env.HOME || process.env.USERPROFILE || '',
     'Music', 'Mineradio'
   );
-  const sourceDir = {
-    soda: 'Soda',
-    netease: 'NetEase',
-    qq: 'QQ',
-    local: 'Local',
-  }[source] || 'Other';
-  const dir = path.join(base, sourceDir);
+  const dir = path.join(base, 'Music');
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -158,7 +155,7 @@ function startDownload(song, opts) {
 
   const jobId = generateJobId();
   const baseName = buildBaseName(song);
-  const outputDir = getOutputDir(source);
+  const outputDir = getOutputDir();
 
   const job = {
     id: jobId,
@@ -210,6 +207,31 @@ function startDownload(song, opts) {
     status: 'queued',
     fileName: job.fileName,
   };
+}
+
+function deleteDownload(jobId) {
+  const activeJob = activeJobs.get(jobId);
+
+  const storedJob = store ? store.getJob(jobId) : null;
+  const target = activeJob || storedJob;
+  if (!target) return { success: false, error: 'JOB_NOT_FOUND' };
+
+  if (target.filePath && fs.existsSync(target.filePath)) {
+    try { fs.unlinkSync(target.filePath); } catch (e) {}
+  }
+
+  const sourceId = target.sourceId || '';
+  if (sourceId && target.filePath) {
+    const songsDir = path.join(path.dirname(path.dirname(target.filePath)), 'Songs', sourceId);
+    if (fs.existsSync(songsDir)) {
+      try { fs.rmSync(songsDir, { recursive: true, force: true }); } catch (e) {}
+    }
+  }
+
+  if (activeJob) activeJobs.delete(jobId);
+  if (store) store.removeJob(jobId);
+
+  return { success: true };
 }
 
 function cancelDownload(jobId) {
@@ -405,6 +427,7 @@ module.exports = {
   setup,
   startDownload,
   cancelDownload,
+  deleteDownload,
   getJobStatus,
   getAllJobs,
   getFilePath,

@@ -139,6 +139,22 @@ function writeLyricFile(dir, baseName, lyricText) {
   }
 }
 
+function safeFileName(name) {
+  if (!name || typeof name !== 'string') return '';
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || '';
+}
+
+function getBaseDir(filePath) {
+  return path.dirname(path.dirname(filePath));
+}
+
+function songAssetDir(filePath, sourceId, title) {
+  const baseDir = getBaseDir(filePath);
+  const safeTitle = safeFileName(title);
+  const dirName = sourceId ? (sourceId + (safeTitle ? '_' + safeTitle : '')) : (safeTitle || 'unknown');
+  return path.join(baseDir, 'Songs', dirName);
+}
+
 async function enhanceDownload(job, opts) {
   opts = opts || {};
   const { song, filePath, source, sourceQuality, headers } = job;
@@ -152,15 +168,24 @@ async function enhanceDownload(job, opts) {
   const ext = path.extname(filePath);
   const outputExt = ext.replace('.', '');
   const audioHeaders = headers || {};
+  const sourceId = (song && (song.sodaId || song.mid || song.id)) || '';
 
-  assetLog('START', { file: path.basename(filePath), dir, source });
+  const assetsDir = songAssetDir(filePath, sourceId, song.name);
+
+  assetLog('START', { file: path.basename(filePath), dir, songsDir: assetsDir, source });
+
+  const baseDir = getBaseDir(filePath);
+  const mediaPath = path.relative(baseDir, filePath);
+  const assetPath = path.relative(baseDir, assetsDir);
 
   const metadata = {
     title: song.name || 'Unknown',
     artist: song.artist || 'Unknown',
     album: song.album || '',
     source,
-    sourceId: song.sodaId || song.mid || song.id || '',
+    sourceId: sourceId,
+    mediaPath: mediaPath.replace(/\\/g, '/'),
+    assetPath: assetPath.replace(/\\/g, '/') + '/',
     downloadTime: new Date().toISOString(),
     quality: {
       requestedFormat: job.format || 'auto',
@@ -204,9 +229,11 @@ async function enhanceDownload(job, opts) {
     writeId3Tags(filePath, id3Tags);
   }
 
+  ensureDir(assetsDir);
+
   let coverPath = '';
   if (coverInfo && coverInfo.buffer) {
-    coverPath = path.join(dir, baseName + '.jpg');
+    coverPath = path.join(assetsDir, 'cover.jpg');
     try {
       fs.writeFileSync(coverPath, coverInfo.buffer);
       assetLog('COVER_FILE', { path: coverPath, size: coverInfo.buffer.length });
@@ -218,10 +245,25 @@ async function enhanceDownload(job, opts) {
 
   let lyricPath = '';
   if (lyricText) {
-    lyricPath = writeLyricFile(dir, baseName, lyricText);
+    lyricPath = path.join(assetsDir, 'lyrics.lrc');
+    try {
+      fs.writeFileSync(lyricPath, lyricText, 'utf8');
+      assetLog('LYRIC_FILE', { path: lyricPath, size: lyricText.length });
+    } catch (e) {
+      assetLog('LYRIC_FILE_ERR', { error: e.message });
+      lyricPath = '';
+    }
   }
 
-  const metaPath = writeMetadataJson(dir, baseName, metadata);
+  let metaPath = '';
+  try {
+    metaPath = path.join(assetsDir, 'metadata.json');
+    fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2), 'utf8');
+    assetLog('METADATA', { path: metaPath });
+  } catch (e) {
+    assetLog('METADATA_ERR', { error: e.message });
+    metaPath = '';
+  }
 
   assetLog('DONE', {
     audio: path.basename(filePath),
@@ -229,6 +271,7 @@ async function enhanceDownload(job, opts) {
     cover: coverPath ? 'YES' : 'NO',
     lyric: lyricPath ? 'YES' : 'NO',
     id3: ext === '.mp3' ? 'YES' : 'SKIPPED',
+    songsDir: assetsDir,
   });
 
   return {
@@ -237,6 +280,7 @@ async function enhanceDownload(job, opts) {
     coverPath,
     lyricPath,
     metadata,
+    songsDir: assetsDir,
   };
 }
 
