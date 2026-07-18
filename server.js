@@ -73,6 +73,7 @@ const { mineradioUserDataDir, writePrivateStateFile } = require('./server/utils/
 const sodaSigning = require('./server/providers/soda/soda-signing');
 const sodaApiClient = require('./server/providers/soda/soda-api-client');
 const sodaResolver = require('./server/providers/soda/soda-playback-resolver');
+const sodaProvider = require('./server/providers/soda/soda-provider');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -4237,6 +4238,19 @@ sodaResolver.setup({
   probeSodaMediaDurationMs,
 });
 
+sodaProvider.setup({
+  refreshCookie: refreshSodaCookieFromClient,
+  ensureSignature: ensureSodaPlaybackSignatureReady,
+  getSodaLimitedFreeInfo,
+  trySodaMCheckMedia,
+  tryResolveSodaTrackV2,
+  tryResolveUnencryptedFallback: tryResolveSodaUnencryptedPlaybackFallback,
+  playbackNativeStatus: sodaPlaybackNativeStatus,
+  normalizeLimitedFreeInfo: normalizeSodaLimitedFreeInfo,
+  cachedLimitedFreeInfo: cachedSodaLimitedFreeInfo,
+  debugDump: sodaPlaybackDebugDump,
+});
+
 function sodaCommonParams(extra) {
   return sodaApiClient.sodaCommonParams(extra);
 }
@@ -6183,57 +6197,19 @@ async function handleSodaSongUrl(id, qualityPreference, options) {
   options = options || {};
   const trackId = String(id || '').trim();
   if (!trackId) return { provider: 'soda', url: '', error: 'MISSING_ID', message: 'Missing Soda track id' };
-  let body = {};
-  let playbackError = null;
-  let signatureRetried = false;
-  let limitedFreeSynced = false;
-  let playbackLimitedFreeInfo = normalizeSodaLimitedFreeInfo(options.limitedFreeInfo || options.limitedFreeParam) || cachedSodaLimitedFreeInfo(trackId);
+
+  const resolution = await sodaProvider.resolvePlayback(trackId, qualityPreference, options);
+  let body = resolution.body || {};
+  let media = resolution.media;
+  let bodyBenefit = resolution.bodyBenefit || sodaFreeBenefitSummary([body]);
+  let playbackLimitedFreeInfo = resolution.playbackLimitedFreeInfo;
+  let signatureRetried = resolution.signatureRetried || false;
+  let limitedFreeSynced = resolution.limitedFreeSynced || false;
+  let playbackError = resolution.error;
+
+  if (resolution.error && resolution.error === 'MISSING_ID') return { provider: 'soda', url: '', error: 'MISSING_ID', message: 'Missing Soda track id' };
+
   try {
-    if (!sodaCookie) refreshSodaCookieFromClient(false);
-    await ensureSodaPlaybackSignatureReady({ allowGlobalScan: false, syncLocal: false });
-    if (!playbackLimitedFreeInfo) {
-      try { playbackLimitedFreeInfo = await getSodaLimitedFreeInfo(trackId, options); }
-      catch (e) { sodaPlaybackDebugDump('limited_free_prefetch_error', { error: e && e.message || String(e) }); }
-    }
-    if (playbackLimitedFreeInfo) {
-      limitedFreeSynced = true;
-      options = { ...options, limitedFreeInfo: playbackLimitedFreeInfo };
-      await trySodaMCheckMedia(trackId, playbackLimitedFreeInfo, options);
-    }
-    let resolved = await tryResolveSodaTrackV2(trackId, qualityPreference, options);
-    body = resolved.body || {};
-    let bodyBenefit = resolved.bodyBenefit || sodaFreeBenefitSummary([body]);
-    let media = resolved.media;
-    if (!media && !playbackLimitedFreeInfo && (resolved.onlyPreview || bodyBenefit.hasFreeBenefit || resolved.fee > 0 || sodaPlaybackFeeFromBody(body) > 0)) {
-      try { playbackLimitedFreeInfo = await getSodaLimitedFreeInfo(trackId, { ...options, trackBody: body, body }); }
-      catch (e) { sodaPlaybackDebugDump('limited_free_retry_prefetch_error', { error: e && e.message || String(e) }); }
-      if (playbackLimitedFreeInfo) {
-        limitedFreeSynced = true;
-        options = { ...options, limitedFreeInfo: playbackLimitedFreeInfo, trackBody: body };
-        await trySodaMCheckMedia(trackId, playbackLimitedFreeInfo, options);
-        resolved = await tryResolveSodaTrackV2(trackId, qualityPreference, options);
-        body = resolved.body || {};
-        bodyBenefit = resolved.bodyBenefit || sodaFreeBenefitSummary([body]);
-        media = resolved.media;
-      }
-    }
-    if (!media && !signatureRetried && (resolved.needsSignature || resolved.onlyPreview || bodyBenefit.hasFreeBenefit || resolved.fee > 0 || sodaPlaybackFeeFromBody(body) > 0)) {
-      signatureRetried = true;
-      await ensureSodaPlaybackSignatureReady({ allowGlobalScan: true, syncLocal: true });
-      if (!playbackLimitedFreeInfo) {
-        try { playbackLimitedFreeInfo = await getSodaLimitedFreeInfo(trackId, { ...options, trackBody: body, body }); }
-        catch (e) { sodaPlaybackDebugDump('limited_free_signature_retry_prefetch_error', { error: e && e.message || String(e) }); }
-        if (playbackLimitedFreeInfo) {
-          limitedFreeSynced = true;
-          options = { ...options, limitedFreeInfo: playbackLimitedFreeInfo, trackBody: body };
-          await trySodaMCheckMedia(trackId, playbackLimitedFreeInfo, options);
-        }
-      }
-      resolved = await tryResolveSodaTrackV2(trackId, qualityPreference, options);
-      body = resolved.body || {};
-      bodyBenefit = resolved.bodyBenefit || sodaFreeBenefitSummary([body]);
-      media = resolved.media;
-    }
     if (media && media.url) {
       let playUrl = media.url;
       let localTranscode = false;
