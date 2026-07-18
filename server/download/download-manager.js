@@ -1,0 +1,340 @@
+'use strict';
+
+const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
+
+const MAX_CONCURRENT = 3;
+const DOWNLOAD_TIMEOUT_MS = 300000;
+
+let resolveUrlFn = null;
+let ffmpegPathFn = null;
+let musicDirFn = null;
+let store = null;
+
+let activeJobs = new Map();
+let queue = [];
+
+function generateJobId() {
+  return 'dl_' + crypto.randomBytes(8).toString('hex');
+}
+
+function safeFileName(name) {
+  return String(name || 'Unknown')
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
+}
+
+function getOutputDir(source) {
+  const base = musicDirFn ? musicDirFn() : path.join(
+    process.env.HOME || process.env.USERPROFILE || '',
+    'Music', 'Mineradio'
+  );
+  const sourceDir = {
+    soda: 'Soda',
+    netease: 'NetEase',
+    qq: 'QQ',
+    local: 'Local',
+  }[source] || 'Other';
+  const dir = path.join(base, sourceDir);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+function buildFileName(song, format) {
+  const artist = safeFileName(song.artist || 'Unknown');
+  const title = safeFileName(song.name || 'Unknown');
+  return `${artist} - ${title}.${format}`;
+}
+
+function setup(deps) {
+  if (!deps) return;
+  resolveUrlFn = deps.resolveUrl || null;
+  ffmpegPathFn = deps.ffmpegPath || null;
+  musicDirFn = deps.musicDir || null;
+  store = deps.store || null;
+}
+
+function getJobStatus(jobId) {
+  const job = activeJobs.get(jobId);
+  if (job) {
+    return {
+      id: job.id,
+      source: job.source,
+      sourceId: job.sourceId,
+      title: job.title,
+      artist: job.artist,
+      format: job.format,
+      status: job.status,
+      progress: { ...job.progress },
+      fileName: job.fileName,
+      filePath: job.filePath,
+      createdAt: job.createdAt,
+      completedAt: job.completedAt,
+      fileSize: job.fileSize,
+      error: job.error || '',
+      sourceQuality: job.sourceQuality || null,
+      converted: job.converted || false,
+    };
+  }
+  if (store) {
+    const saved = store.getJob(jobId);
+    if (saved) {
+      return {
+        id: saved.id,
+        source: saved.source,
+        sourceId: saved.sourceId,
+        title: saved.title,
+        artist: saved.artist,
+        format: saved.format,
+        status: saved.status,
+        progress: { phase: saved.status, downloaded: 0, total: 0, percent: saved.status === 'completed' ? 100 : 0 },
+        fileName: saved.fileName,
+        filePath: saved.filePath,
+        createdAt: saved.createdAt,
+        completedAt: saved.completedAt,
+        fileSize: saved.fileSize,
+        error: saved.error || '',
+        sourceQuality: saved.sourceQuality || null,
+        converted: saved.converted || false,
+      };
+    }
+  }
+  return null;
+}
+
+function getAllJobs() {
+  if (!store) return [];
+  return store.getAllJobs().map(j => ({
+    id: j.id,
+    source: j.source,
+    sourceId: j.sourceId,
+    title: j.title,
+    artist: j.artist,
+    format: j.format,
+    status: j.status,
+    fileName: j.fileName,
+    filePath: j.filePath,
+    createdAt: j.createdAt,
+    completedAt: j.completedAt,
+    fileSize: j.fileSize,
+    error: j.error || '',
+  }));
+}
+
+function getFilePath(jobId) {
+  const job = activeJobs.get(jobId);
+  if (job && job.filePath && job.status === 'completed') return job.filePath;
+  if (store) {
+    const saved = store.getJob(jobId);
+    if (saved && saved.filePath && saved.status === 'completed') return saved.filePath;
+  }
+  return null;
+}
+
+function startDownload(song, opts) {
+  opts = opts || {};
+  const format = opts.format || 'mp3';
+  const quality = opts.quality || 'standard';
+  const source = opts.source || '';
+
+  const activeCount = Array.from(activeJobs.values()).filter(j => j.status === 'downloading' || j.status === 'resolving' || j.status === 'transcoding').length;
+  if (activeCount >= MAX_CONCURRENT) {
+    return { error: 'MAX_CONCURRENT_REACHED', message: '下载队列已满，请稍后重试' };
+  }
+
+  const jobId = generateJobId();
+  const fileName = buildFileName(song, format);
+  const outputDir = getOutputDir(source);
+  const filePath = path.join(outputDir, fileName);
+
+  const job = {
+    id: jobId,
+    source,
+    sourceId: song.sodaId || song.mid || song.id || '',
+    title: song.name || '',
+    artist: song.artist || '',
+    album: song.album || '',
+    quality,
+    format,
+    status: 'queued',
+    progress: { phase: 'queued', downloaded: 0, total: 0, percent: 0 },
+    fileName,
+    filePath,
+    createdAt: Date.now(),
+    completedAt: 0,
+    fileSize: 0,
+    error: '',
+    song,
+    _abort: false,
+  };
+
+  activeJobs.set(jobId, job);
+
+  if (store) {
+    store.addJob({
+      id: jobId,
+      source,
+      sourceId: job.sourceId,
+      title: job.title,
+      artist: job.artist,
+      album: job.album,
+      quality,
+      format,
+      status: 'queued',
+      filePath,
+      fileName,
+      createdAt: job.createdAt,
+    });
+  }
+
+  processNextJob(job);
+
+  return {
+    jobId,
+    status: 'queued',
+    fileName,
+  };
+}
+
+function cancelDownload(jobId) {
+  const job = activeJobs.get(jobId);
+  if (!job) return false;
+  if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') return false;
+  job._abort = true;
+  job.status = 'cancelled';
+  job.error = 'Cancelled by user';
+  if (store) store.updateJob(jobId, { status: 'cancelled', error: 'Cancelled by user' });
+  return true;
+}
+
+function managerLog(jobId, tag, data) {
+  const ts = new Date().toISOString().slice(11, 23);
+  console.log(`[DL-MGR] ${ts} [${jobId}] ${tag}`, typeof data === 'string' ? data : JSON.stringify(data));
+}
+
+async function processNextJob(job) {
+  try {
+    job.status = 'resolving';
+    job.progress = { phase: 'resolving', downloaded: 0, total: 0, percent: 0 };
+    if (store) store.updateJob(job.id, { status: 'resolving' });
+    managerLog(job.id, 'RESOLVE', { source: job.source, sourceId: job.sourceId, quality: job.quality, format: job.format });
+
+    if (!resolveUrlFn) throw new Error('resolveUrl not configured');
+    const urlResult = await resolveUrlFn(job.song, job.quality, job.format);
+
+    if (!urlResult || !urlResult.url) {
+      const errMsg = urlResult && urlResult.error ? urlResult.error : 'URL_UNAVAILABLE';
+      managerLog(job.id, 'RESOLVE_FAIL', { error: errMsg });
+      throw new Error(errMsg);
+    }
+
+    managerLog(job.id, 'RESOLVED', {
+      urlLen: urlResult.url.length,
+      urlPrefix: urlResult.url.substring(0, 80),
+      format: urlResult.format,
+      hasHeaders: !!(urlResult.headers && urlResult.headers['Cookie']),
+    });
+
+    if (job._abort) return;
+
+    job.audioUrl = urlResult.url;
+    job.totalBytes = urlResult.totalBytes || 0;
+    job.audioFormat = urlResult.format || '';
+    job.decryptionKey = urlResult.decryptionKey || '';
+    job.headers = urlResult.headers || {};
+    job.ffmpegHeaderText = urlResult.ffmpegHeaderText || '';
+    job.userAgent = urlResult.userAgent || '';
+
+    if (typeof emitDownloadEvent === 'function') {
+      emitDownloadEvent('start', job);
+    }
+
+    await downloadAndTranscode(job);
+
+  } catch (e) {
+    if (job._abort) return;
+    job.status = 'failed';
+    job.error = e.message || String(e);
+    job.completedAt = Date.now();
+    managerLog(job.id, 'FAILED', { error: job.error });
+    if (store) store.updateJob(job.id, { status: 'failed', error: job.error, completedAt: job.completedAt });
+  }
+}
+
+async function downloadAndTranscode(job) {
+  const downloadService = require('./download-service');
+
+  job.status = 'downloading';
+  job.progress = { phase: 'downloading', downloaded: 0, total: job.totalBytes || 0, percent: 0 };
+  if (store) store.updateJob(job.id, { status: 'downloading' });
+  managerLog(job.id, 'DOWNLOAD_START', { url: job.audioUrl ? job.audioUrl.substring(0, 80) : 'null', format: job.format });
+
+  const result = await downloadService.execute({
+    audioUrl: job.audioUrl,
+    format: job.format,
+    filePath: job.filePath,
+    decryptionKey: job.decryptionKey,
+    ffmpegPath: ffmpegPathFn ? ffmpegPathFn() : '',
+    headers: job.headers || {},
+    ffmpegHeaderText: job.ffmpegHeaderText || '',
+    userAgent: job.userAgent || '',
+    onProgress: (progress) => {
+      job.progress = progress;
+      if (progress.sourceQuality) {
+        job.sourceQuality = progress.sourceQuality;
+      }
+    },
+    abortCheck: () => job._abort,
+  });
+
+  if (job._abort) return;
+
+  if (result && result.success) {
+    job.status = 'completed';
+    job.completedAt = Date.now();
+    job.fileSize = result.fileSize || 0;
+    job.sourceQuality = result.sourceQuality || job.sourceQuality || null;
+    job.converted = result.converted || false;
+    job.progress = { phase: 'completed', downloaded: result.fileSize || 0, total: result.fileSize || 0, percent: 100 };
+    managerLog(job.id, 'DOWNLOAD_OK', { fileSize: job.fileSize, filePath: job.filePath });
+    if (store) store.updateJob(job.id, {
+      status: 'completed',
+      completedAt: job.completedAt,
+      fileSize: job.fileSize,
+      sourceQuality: job.sourceQuality,
+      converted: job.converted,
+    });
+  } else {
+    const errMsg = result && result.error ? result.error : 'DOWNLOAD_FAILED';
+    managerLog(job.id, 'DOWNLOAD_FAIL', { error: errMsg });
+    throw new Error(errMsg);
+  }
+}
+
+function cleanup(maxAgeMs) {
+  if (store) store.cleanup(maxAgeMs);
+  for (const [id, job] of activeJobs) {
+    if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+      activeJobs.delete(id);
+    }
+  }
+}
+
+function emitDownloadEvent(type, job) {
+  // Placeholder for future SSE/WS events
+}
+
+module.exports = {
+  setup,
+  startDownload,
+  cancelDownload,
+  getJobStatus,
+  getAllJobs,
+  getFilePath,
+  cleanup,
+};

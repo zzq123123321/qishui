@@ -74,6 +74,8 @@ const sodaSigning = require('./server/providers/soda/soda-signing');
 const sodaApiClient = require('./server/providers/soda/soda-api-client');
 const sodaResolver = require('./server/providers/soda/soda-playback-resolver');
 const sodaProvider = require('./server/providers/soda/soda-provider');
+const downloadStore = require('./server/download/download-store');
+const downloadManager = require('./server/download/download-manager');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -4250,6 +4252,65 @@ sodaProvider.setup({
   cachedLimitedFreeInfo: cachedSodaLimitedFreeInfo,
   debugDump: sodaPlaybackDebugDump,
 });
+
+downloadStore.reset();
+downloadManager.setup({
+  resolveUrl: resolveTrackUrlForDownload,
+  ffmpegPath: () => ffmpegBinaryPath,
+  musicDir: () => process.env.MINERADIO_MUSIC_DIR || '',
+  store: downloadStore,
+});
+
+async function resolveTrackUrlForDownload(song, quality, format) {
+  const provider = song && (song.provider || song.source || song.type || '');
+  const isSoda = provider === 'soda' || song.sodaId || song.vid;
+  const isQQ = provider === 'qq' || song.mid || song.songmid;
+  console.log(`[DL-RESOLVE] provider=${provider} isSoda=${isSoda} isQQ=${isQQ} id=${song && (song.sodaId || song.mid || song.id || '')} q=${quality} fmt=${format}`);
+  try {
+    if (isSoda) {
+      const info = await handleSodaSongUrl(song.sodaId || song.id || '', quality || 'exhigh', {});
+      console.log(`[DL-RESOLVE] soda result: playable=${info && info.playable} url=${info && info.url ? info.url.substring(0, 80) : 'null'} error=${info && info.error || 'none'}`);
+      if (info && info.url && info.playable) {
+        let audioUrl = info.url;
+        let headers = {};
+        let decryptionKey = '';
+        if (audioUrl.startsWith('/api/soda/audio?token=')) {
+          const token = audioUrl.split('token=')[1];
+          const session = sodaPlaybackSessions.get(token);
+          if (session) {
+            const sources = sodaPlaybackSourceList(session);
+            if (sources.length > 0) {
+              audioUrl = sources[0];
+              console.log(`[DL-RESOLVE] soda session resolved: ${audioUrl.substring(0, 100)}`);
+            }
+            if (session.decodedKey) {
+              decryptionKey = session.decodedKey;
+              console.log(`[DL-RESOLVE] soda decodedKey found`);
+            }
+          } else {
+            console.log(`[DL-RESOLVE] soda session not found for token=${token.substring(0, 20)}...`);
+          }
+        }
+        headers = sodaAudioRequestHeadersFor(audioUrl, '', { includeCookie: true });
+        const ffmpegHeaderText = sodaFfmpegHeaderText(audioUrl);
+        const ua = sodaUserAgent();
+        return { url: audioUrl, format: info.localTranscode ? 'mp3' : (format || 'mp3'), totalBytes: 0, decryptionKey, headers, ffmpegHeaderText, userAgent: ua };
+      }
+      return { error: info && info.error || 'SODA_URL_UNAVAILABLE' };
+    }
+    if (isQQ) {
+      const info = await handleQQSongUrl(song.mid || song.songmid || song.id || '', song.mediaMid || song.media_mid || '', quality || 'exhigh', {});
+      if (info && info.url && info.playable) return { url: info.url, format: format || 'mp3', totalBytes: 0, decryptionKey: '', headers: {}, ffmpegHeaderText: '', userAgent: '' };
+      return { error: info && info.error || 'QQ_URL_UNAVAILABLE' };
+    }
+    const info = await handleSongUrl(song.id || '', {}, quality || 'exhigh', {});
+    if (info && info.url && info.playable) return { url: info.url, format: format || 'mp3', totalBytes: 0, decryptionKey: '', headers: {}, ffmpegHeaderText: '', userAgent: '' };
+    return { error: info && info.error || 'NETEASE_URL_UNAVAILABLE' };
+  } catch (e) {
+    console.error(`[DL-RESOLVE] error:`, e.message);
+    return { error: e.message || String(e) };
+  }
+}
 
 function sodaCommonParams(extra) {
   return sodaApiClient.sodaCommonParams(extra);
@@ -10481,6 +10542,84 @@ const server = http.createServer(async (req, res) => {
       while (true) { const c = await reader.read(); if (c.done) break; res.write(c.value); }
       res.end();
     } catch (err) { console.error('[Audio]', err); res.writeHead(500); res.end(); }
+    return;
+  }
+
+  // ---------- 下载 API ----------
+  if (pn === '/api/download/start') {
+    try {
+      if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return; }
+      const body = await readRequestBody(req);
+      const song = {
+        id: body.id || '',
+        sodaId: body.sodaId || body.id || '',
+        mid: body.mid || '',
+        songmid: body.songmid || '',
+        mediaMid: body.mediaMid || '',
+        name: body.name || 'Unknown',
+        artist: body.artist || 'Unknown',
+        album: body.album || '',
+      };
+      const format = body.format === 'flac' ? 'flac' : 'mp3';
+      const quality = body.quality || 'exhigh';
+      const source = body.source || (song.sodaId ? 'soda' : (song.mid ? 'qq' : 'netease'));
+      const result = downloadManager.startDownload(song, { format, quality, source });
+      sendJSON(res, result);
+    } catch (err) { console.error('[DownloadStart]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/download/status') {
+    try {
+      const jobId = url.searchParams.get('id') || '';
+      if (!jobId) { sendJSON(res, { error: 'Missing id' }, 400); return; }
+      const status = downloadManager.getJobStatus(jobId);
+      if (!status) { sendJSON(res, { error: 'Job not found' }, 404); return; }
+      sendJSON(res, status);
+    } catch (err) { console.error('[DownloadStatus]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/download/cancel') {
+    try {
+      if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return; }
+      const body = await readRequestBody(req);
+      const jobId = body.jobId || '';
+      if (!jobId) { sendJSON(res, { error: 'Missing jobId' }, 400); return; }
+      const ok = downloadManager.cancelDownload(jobId);
+      sendJSON(res, { success: ok });
+    } catch (err) { console.error('[DownloadCancel]', err); sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/download/file') {
+    try {
+      const jobId = url.searchParams.get('id') || '';
+      if (!jobId) { res.writeHead(400); res.end('Missing id'); return; }
+      const filePath = downloadManager.getFilePath(jobId);
+      if (!filePath) { res.writeHead(404); res.end('File not found'); return; }
+      if (!fs.existsSync(filePath)) { res.writeHead(404); res.end('File missing on disk'); return; }
+      const stat = fs.statSync(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = ext === '.flac' ? 'audio/flac' : 'audio/mpeg';
+      const fileName = path.basename(filePath);
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': stat.size,
+        'Content-Disposition': 'attachment; filename="' + encodeURIComponent(fileName) + '"',
+        'Access-Control-Allow-Origin': '*',
+      });
+      const stream = fs.createReadStream(filePath);
+      stream.pipe(res);
+    } catch (err) { console.error('[DownloadFile]', err); res.writeHead(500); res.end(); }
+    return;
+  }
+
+  if (pn === '/api/download/list') {
+    try {
+      const jobs = downloadManager.getAllJobs();
+      sendJSON(res, { jobs });
+    } catch (err) { console.error('[DownloadList]', err); sendJSON(res, { error: err.message }, 500); }
     return;
   }
 
